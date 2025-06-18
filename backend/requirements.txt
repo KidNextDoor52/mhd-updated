@@ -1,0 +1,8 @@
+fastapi
+uvicorn
+pymongo
+python-multipart
+python-dotenv
+passlib[bcrypt]
+python-jose
+PyMuPDF
