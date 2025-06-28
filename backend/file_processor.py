@@ -28,4 +28,3 @@ def process_uploaded_file(file, upload_dir="uploads"):
         "document_type": "Medical History",
         "text": extracted_text
     }
-    2

@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Document Dashboard</title>
+</head>
+<body>
+    <h1>Uploaded Documents</h1>
+    <ul>
+        {% for doc in docs %}
+        <li>
+            Type: {{ doc.document_type }} | Date: {{ doc.upload_date }} | Tags: {{ doc.tags }}
+        </li>
+        {% endfor %}
+    </ul>
+</body>
+</html>
