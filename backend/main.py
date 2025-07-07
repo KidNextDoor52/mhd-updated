@@ -7,6 +7,7 @@ from auth import authenticate_user, create_access_token, get_password_hash
 
 app = FastAPI()
 
+
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 @app.get("/", response_class=HTMLResponse)

@@ -10,6 +10,16 @@ def extract_text_from_pdf(file_path):
             text += page.get_text()
     return text
 
+KEYWORDS = ["diagnosis", "treatment", "medication", "surgery", "injury"]
+
+def extract_keywords(text):
+    found = []
+    text_lower = text.lower()
+    for kw in KEYWORDS:
+        if kw in text_lower:
+            found.append(kw)
+    return found
+
 def process_uploaded_file(file, upload_dir="uploads"):
     os.makedirs(upload_dir, exist_ok=True)
     filename = f"{uuid.uuid4()}.pdf"
@@ -19,6 +29,8 @@ def process_uploaded_file(file, upload_dir="uploads"):
         f.write(file)
 
     extracted_text = extract_text_from_pdf(file_path)
+    tags = extract_keywords(extracted_text)
+
 
     return {
         "document_id": str(uuid.uuid4()),
@@ -26,5 +38,6 @@ def process_uploaded_file(file, upload_dir="uploads"):
         "file_path": file_path,
         "upload_date": datetime.utcnow().isoformat(),
         "document_type": "Medical History",
-        "text": extracted_text
+        "text": extracted_text,
+        "tags": tags
     }
