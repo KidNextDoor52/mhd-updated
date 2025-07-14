@@ -1,11 +1,11 @@
 version: '3.8'
 services:
-  mongo:
+  mongo-test:
     image: mongo:5
     ports:
       - "27017:27017"
+    container_name: mongo-test
     volumes:
-      - mongo-data:/data/db
-
+      - mongo-test-data:/data/db
 volumes:
-  mongo-data:
+  mongo-test-data:
