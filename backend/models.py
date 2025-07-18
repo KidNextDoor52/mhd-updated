@@ -35,3 +35,13 @@ physical_exam_schema = {
     "exam_id": str,
     "athlete_id": str,
 }
+
+shared_links_schema = {
+    "link_id": str,
+    "resource_type": str,
+    "resource_id": str,
+    "shared_by": str,
+    "shared_with": str,
+    "expires_at": str,
+    "password": str
+}

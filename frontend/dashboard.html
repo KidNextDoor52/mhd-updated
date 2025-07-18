@@ -5,12 +5,25 @@
 </head>
 <body>
     <h1>Uploaded Documents</h1>
+    <p><a href="/profile">My Profile</a> | <a href="/">Home</a></p>
+    
+    <form method="get" action="/dashboard">
+        <label>Filter by tag:</label>
+        <input type="text" name="tag" placeholder="e.g., diagnosis" value="{{ request.query_params.get('tag', '') }}">
+        <label>Filter by upload date (YYYY-MM-DD):</label>
+        <input type="date" name="date" value="{{ request.query_params.get('date', '') }}">
+        <button type="submit">Filter</button>
+        <a href="/dashboard"><button type="button">Reset</button></a>
+    </form>
+
     <ul>
         {% for doc in docs %}
         <li>
             Type: {{ doc.document_type }} | Date: {{ doc.upload_date }} | Tags: {{ doc.tags }}
         </li>
-        {% endfor %}
+    {% else %}
+        <li>No documents found for the selected filters.</li>
+    {% endfor %}
     </ul>
 </body>
 </html>
