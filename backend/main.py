@@ -8,6 +8,7 @@ from auth import authenticate_user, create_access_token, get_password_hash, get_
 from uuid import uuid4, uuid
 from datetime import datetime, timedelta
 import bcrypt
+from bson.objectid import ObjectId
 
 app = FastAPI()
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
@@ -47,7 +48,7 @@ def login(form_data: OAuth2PasswordRequestForm = Depends()):
     token = create_access_token({"sub": user["username"]})
     return {"access_token": token, "token_type": "bearer"}
 
-
+#Dashboard function/filtering
 @app.get("/dashboard", response_class=HTMLResponse)
 def dashboard(
     request: Request,
@@ -79,6 +80,7 @@ def profile(request: Request, current_user: dict = Depends(get_current_user)):
 def show_form(request: Request, current_user: dict = Depends(get_current_user)):
     return templates.TemplateResponse("create_form.html", {"request": request})
 
+#submitting form function
 @app.post("/form/create", response_class=HTMLResponse)
 async def submit_form(
     request: Request,
@@ -103,6 +105,7 @@ async def submit_form(
         "message": "Form submitted successfully!"
     })
 
+#generating share link function
 @app.post("/share")
 def share_resource(
     resource_id: str = Form(...),
@@ -135,6 +138,7 @@ def share_resource(
         "expires_at": expires_at.isoformat()
     }
 
+#Viewing shared link function
 @app.get("/shared/{link_id}", response_class=HTMLResponse)
 def view_shared_resources(
     link_id: str,
@@ -159,4 +163,17 @@ def view_shared_resources(
         raise HTTPException(status_code=403, detail="You are not authorized to access this resource")
     
     #Load the actual data
-    if record["resource_type"]
+    if record["resource_type"] == "document":
+        doc = db.documents.find_one({"document_id": record["resource_id"]})
+        return templates.TemplateResponse("Shared_document.html", {
+            "requrest": request,
+            "doc": doc
+        })
+    
+    elif record["resource_type"] == "form":
+        form = db.medical_history.find_one({"_id": ObjectId(record["resource_id"])})
+        return templates.TemplateResponse("shared_form.html", {
+            "request": request,
+            "form": form
+        })
+    raise HTTPException(status_code=400, detail="Unsupported resource type")
