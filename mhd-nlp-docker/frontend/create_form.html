@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Create Medical History Form</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 2em; }
+    label { display: block; margin-top: 1em; font-weight: bold; }
+    input, textarea, select, button { margin-top: 0.5em; width: 100%; max-width: 400px; }
+    .form-group { margin-bottom: 1.2em; }
+    .success { color: green; margin-top: 1em; }
+    .nav { margin-bottom: 1.5em; }
+  </style>
+</head>
+<body>
+
+  <div class="nav">
+    <a href="/">🏠 Home</a> |
+    <a href="/dashboard">📄 Dashboard</a> |
+    <a href="/profile">👤 Profile</a>
+  </div>
+
+  <h2>🩺 Submit Medical History</h2>
+
+  {% if message %}
+    <p class="success">{{ message }}</p>
+  {% endif %}
+
+  <form method="post">
+    <div class="form-group">
+      <label for="name">Full Name:</label>
+      <input name="name" id="name" required>
+    </div>
+
+    <div class="form-group">
+      <label for="age">Age:</label>
+      <input name="age" id="age" type="number" min="0" max="130" required>
+    </div>
+
+    <div class="form-group">
+      <label for="injury_history">Injury History:</label>
+      <textarea name="injury_history" id="injury_history" rows="4" required></textarea>
+    </div>
+
+    <div class="form-group">
+      <label for="status">Submission Status:</label>
+      <select name="status" id="status" required>
+        <option value="draft">📝 Save as Draft</option>
+        <option value="final">✅ Submit Final</option>
+      </select>
+    </div>
+
+    <button type="submit">🚀 Submit</button>
+  </form>
+
+</body>
+</html>

@@ -2,6 +2,9 @@ import fitz  # PyMuPDF
 import os
 from datetime import datetime
 import uuid
+import spacy
+
+nlp = spacy.load("en_core_sci_sm")
 
 def extract_text_from_pdf(file_path):
     text = ""

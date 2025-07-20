@@ -1,0 +1,13 @@
+
+pymongo
+python-multipart
+python-dotenv
+passlib[bcrypt]
+python-jose
+PyMuPDF
+pdfminer.six
+PyMuPDF
+uvicorn[standard]
+fastapi
+spacy==3.7.5
+scispacy==0.5.5
