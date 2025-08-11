@@ -45,3 +45,15 @@ shared_links_schema = {
     "expires_at": str,
     "password": str
 }
+
+user_equipment = {
+    "username": "marcusj",
+    "cleats": { "type": "Nike Vapor", "size": "11"},
+    "helmet": { "type": "Riddell SpeedFlex", "size": "Large"},
+    "shoulder_pads": { "size": "XL" },
+    "mouthpiece": "Battle Oxygen",
+    "gloves": "Nike Superbad",
+    "contacts": true,
+    "measurement": "42in chest",
+    "first_time": true
+}

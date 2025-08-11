@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Equipment Form</title>
+</head>
+<body>
+  <h1>{{ editing and "Update" or "Submit" }} Equipment Preferences</h1>
+
+  <form method="post">
+    <label>Cleats:</label>
+    <input name="cleats" value="{{ equipment.get('cleats', {}).get('type', '') }}" required><br>
+    <label>Cleat Size:</label>
+    <input name="cleats_size" value="{{ equipment.get('cleats', {}).get('size', '') }}" required><br>
+
+    <label>Helmet:</label>
+    <input name="helmet" value="{{ equipment.get('helmet', {}).get('type', '') }}" required><br>
+    <label>Helmet Size:</label>
+    <input name="helmet_size" value="{{ equipment.get('helmet', {}).get('size', '') }}" required><br>
+
+    <label>Shoulder Pads:</label>
+    <input name="shoulder_pads" value="{{ equipment.get('shoulder_pads', {}).get('type', '') }}" required><br>
+    <label>Pads Size:</label>
+    <input name="pads_size" value="{{ equipment.get('shoulder_pads', {}).get('size', '') }}" required><br>
+
+    <label>Mouthpiece Type:</label>
+    <input name="mouthpiece" value="{{ equipment.get('mouthpiece', '') }}"><br>
+
+    <label>Gloves Preference:</label>
+    <input name="gloves" value="{{ equipment.get('gloves', '') }}"><br>
+
+    <label>Contacts or Glasses:</label>
+    <input name="contacts" value="{{ equipment.get('contacts', '') }}"><br>
+
+    <label>Measurement Notes:</label><br>
+    <textarea name="measurement" rows="4" cols="50">{{ equipment.get('measurement', '') }}</textarea><br><br>
+
+    <button type="submit">{{ editing and "Update" or "Submit" }}</button>
+  </form>
+
+  <br>
+  <a href="/equipment-room">← Back to Equipment Room</a>
+</body>
+</html>

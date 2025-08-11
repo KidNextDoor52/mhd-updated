@@ -170,3 +170,58 @@ def view_shared_resources(
         })
 
     raise HTTPException(status_code=400, detail="Unsupported resource type")
+
+@app.get("/equipment/onboard", response_class=HTMLResponse)
+def equipment_onboarding(request: Request, current_user: dict = Depends(get_current_user)):
+    return templates.TemplateResponse("equipment_onboard.html", {
+        "request": request,
+        "user": current_user
+    })
+
+@app.post("/equipment/onboard")
+async def save_equipment_form(
+    request: Request,
+    current_user: dict = Depends(get_current_user),
+    cleats_type: str = Form(...),
+    cleats_size: str = Form(...),
+    helmet_type: str = Form(...),
+    helmet_size: str = Form(...),
+    shoulder_pad_size: str = Form(...),
+    mouthpiece: str = Form(...),
+    gloves: str = Form(...),
+    contacts: bool = Form(False),
+    measurement: str = Form(...)
+):
+    equipment = {
+        "username": current_user["username"],
+        "cleats": {"type": cleats_type, "size": cleats_size},
+        "helmet": {"type": helmet_type, "size": helmet_size},
+        "shoulder_pads": {"size": shoulder_pad_size},
+        "mouthpiece": "Battle Oxygen",
+        "gloves": gloves,
+        "contacts": contacts,
+        "measurement": measurement,
+        "first_time": False
+    }
+    db.user_equipment.replace_one(
+        {"username": current_user["username"]},
+        equipment,
+        upsert=True
+    )
+    return RedirectResponse("/equipment", status_code=303)
+
+@app.get("/equipment", response_class=HTMLResponse)
+def view_equipment_room(request: Request, current_user: dict = Depends(get_current_user)):
+    record = db.user_equipment.find_one({"username": current_user["username"]})
+
+    if not record:
+        return RedirectResponse("/equiptment/onboard", status_code=303)
+    
+    return templates.TemplateRespnse("equipment_room.html", {
+        "request": request,
+        "equipment": record
+    })
+
+@app.get("/equipment/edit/{item}", response_class=HTMLResponse)
+def edit_gear_item(item: str, request: Request, current_user: dict = Depends(get_current_user)):
+    gear = db.user_equipment 
