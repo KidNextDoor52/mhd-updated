@@ -1,0 +1,29 @@
+version: "3.9"
+
+services:
+  backend:
+    build: .        #/app
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app                 # mount full code including templates
+    command: >
+      uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    environment:
+      - PYTHONUNBUFFERED=1
+      - MONGO_URI=mongodb://mongo:27017
+      - MONGO_DB=mhd_dev
+    env_file:
+      - ./app/.env.dev
+    depends_on:
+      - mongo
+
+  mongo:
+    image: mongo:5
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+
+volumes:
+  mongo_data:

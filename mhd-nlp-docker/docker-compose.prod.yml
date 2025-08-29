@@ -1,18 +1,18 @@
-version: '3.9'
+version: "3.9"
 
 services:
   backend:
-    build: .
+    build: ./app
     ports:
       - "8000:8000"
-    volumes:
-      - .:/app
+    command: >
+      uvicorn app.main:app --host 0.0.0.0 --port 8000
     environment:
       - PYTHONUNBUFFERED=1
       - MONGO_URI=mongodb://mongo:27017
-      - MONGO_DB=mhd_dev
+      - MONGO_DB=mhd_prod
     env_file:
-      - ./app/.env.dev
+      - ./app/.env.prod
     depends_on:
       - mongo
 

@@ -1,18 +1,18 @@
 from fastapi import APIRouter, Request, Form, Depends
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
-from bson.objectid import ObjectId
-from ..db import db
-from ..auth import get_current_user
+from app.db import db
+from app.auth import get_current_user
 
-router = APIRouter()
-templates = Jinja2Templates(directory="templates")
+router = APIRouter(prefix="/equipment", tags=["equipment"])
+templates = Jinja2Templates(directory="app/templates")
 
 equipment_collection = db.equipment
 
-@router.get("/equipment-room", response_class=HTMLResponse)
+
+@router.get("/", response_class=HTMLResponse)
 async def show_equipment_room(request: Request, current_user: dict = Depends(get_current_user)):
-    equipment_data = equipment_collection.find_one({"user_id": current_user["_id"]})
+    equipment_data = equipment_collection.find_one({"username": current_user["username"]})
     first_time = not equipment_data
     return templates.TemplateResponse("equipment_room.html", {
         "request": request,
@@ -21,16 +21,18 @@ async def show_equipment_room(request: Request, current_user: dict = Depends(get
         "show_video": first_time
     })
 
-@router.get("/equipment-room/form", response_class=HTMLResponse)
+
+@router.get("/form", response_class=HTMLResponse)
 async def show_equipment_form(request: Request, current_user: dict = Depends(get_current_user)):
-    existing = equipment_collection.find_one({"user_id": current_user["_id"]})
+    existing = equipment_collection.find_one({"username": current_user["username"]})
     return templates.TemplateResponse("equipment_form.html", {
         "request": request,
         "equipment": existing or {},
         "editing": bool(existing)
     })
 
-@router.post("/equipment-room/form")
+
+@router.post("/form")
 async def submit_equipment_form(
     request: Request,
     cleats: str = Form(...),
@@ -43,23 +45,23 @@ async def submit_equipment_form(
     gloves: str = Form(...),
     contacts: str = Form(...),
     measurement: str = Form(...),
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user),
 ):
     equipment_doc = {
-        "user_id": current_user["_id"],
+        "username": current_user["username"],
         "cleats": {"type": cleats, "size": cleats_size},
         "helmet": {"type": helmet, "size": helmet_size},
         "shoulder_pads": {"type": shoulder_pads, "size": pads_size},
         "mouthpiece": mouthpiece,
         "gloves": gloves,
         "contacts": contacts,
-        "measurement": measurement
+        "measurement": measurement,
     }
 
     equipment_collection.update_one(
-        {"user_id": current_user["_id"]},
+        {"username": current_user["username"]},
         {"$set": equipment_doc},
-        upsert=True
+        upsert=True,
     )
 
-    return RedirectResponse("/equipment-room", status_code=303)
+    return RedirectResponse("/equipment", status_code=303)

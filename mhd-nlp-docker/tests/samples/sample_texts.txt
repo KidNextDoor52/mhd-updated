@@ -1,0 +1,14 @@
+# General Diagnosis
+Patient was diagnosed with Type 2 Diabetes and Hypertension.
+
+# Sports Injury
+Athlete suffered a torn ACL during practice and has chronic shoulder pain.
+
+# Medication Example
+Prescribed 20mg of Lisinopril daily for blood pressure management.
+
+# Surgical Note
+Knee surgery was performed to repair torn meniscus.
+
+# Miscellaneous Case
+John Doe was admitted to the hospital with chest tightness and shortness of breath.

@@ -76,21 +76,40 @@ Endpoint	Method	Description
 bash
 Copy
 .
+│
 ├── app/
-│   ├── main.py                  # FastAPI entrypoint
-│   ├── db.py                    # MongoDB connections
-│   ├── auth.py                  # Authentication & token utils
-│   ├── file_processor.py        # NLP file processor
-│   ├── .env.dev                 # Environment variables
-│   └── frontend/                # HTML templates
-│       ├── index.html
-│       ├── dashboard.html
-│       ├── create_form.html
-│       ├── profile.html
-│       └── ...
-├── requirements.txt
-├── Dockerfile
-├── docker-compose.yml
+│   ├── __init__.py
+│   ├── db.py
+│   ├── routes/
+│   │   ├── auth.py
+│   │   ├── equipment.py
+│   │   ├── weightroom.py
+│   │   ├── upload.py
+│   │   └── training.py
+│   └── ...
+│
+├── templates/
+│   ├── index.html
+│   ├── dashboard.html
+│   ├── equipment_room.html
+│   ├── weightroom.html
+│   ├── upload_record.html
+│   ├── training_room.html
+│   └── ...
+│
+├── static/
+│   ├── css/style.css
+│   ├── js/equipment.js
+│   ├── js/weightroom.js
+│   ├── js/upload.js
+│   ├── js/training.js
+│   └── videos/
+│       ├── equipment_intro.mp4
+│       ├── weightroom_intro.mp4
+│       ├── upload_intro.mp4
+│       └── training_intro.mp4
+│
+└── requirements.txt
 └── README.md
 📖 Development Tips
 You can test authenticated endpoints using Postman or cURL by retrieving a token from /token and adding it to the Authorization header as Bearer <token>.

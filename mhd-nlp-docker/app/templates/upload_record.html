@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Upload Record</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+  <script src="/static/js/upload.js" defer></script>
+</head>
+<body>
+  <h2>Upload Record</h2>
+
+  {% if first_time %}
+  <div id="videoModal" class="modal">
+    <div class="modal-content">
+      <video width="600" controls>
+        <source src="/static/videos/upload_intro.mp4" type="video/mp4">
+      </video>
+      <button onclick="closeModal()">Continue</button>
+    </div>
+  </div>
+  {% endif %}
+
+  <form action="/upload/record" method="POST" enctype="multipart/form-data">
+    <label>Select File:</label>
+    <input type="file" name="file" required><br><br>
+    <button type="submit">Upload</button>
+  </form>
+
+  {% if uploaded_files %}
+  <h3>Your Uploaded Files:</h3>
+  <ul>
+    {% for file in uploaded_files %}
+      <li>{{ file.filename }} ({{ file.upload_date }})</li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+</body>
+</html>
