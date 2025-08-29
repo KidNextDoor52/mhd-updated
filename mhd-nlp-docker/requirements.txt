@@ -1,4 +1,13 @@
-
+fastapi
+uvicorn
+pymongo
+python-multipart
+python-dotenv
+passlib[bcrypt]
+python-jose
+PyMuPDF
+spacy
+scispacy
 pymongo
 python-multipart
 python-dotenv
