@@ -1,6 +1,7 @@
-# app/main.py
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.templating import Jinja2Templates
+from fastapi.responses import HTMLResponse
+from fastapi.staticfiles import StaticFiles
 from app.routes import auth, equipment, weightroom, upload, training, dashboard
 
 app = FastAPI()
@@ -17,6 +18,13 @@ app.include_router(upload.router)
 app.include_router(training.router)
 app.include_router(dashboard.router)
 
-@app.get("/")
-def root():
-    return {"message": "MHD WebApp running. Go to /auth/signup or /auth/token"}
+# Serve static files
+app.mount("/static", StaticFiles(directory="app/static"), name="static")
+
+@app.get("/", response_class=HTMLResponse)
+def root(request: Request):
+    return templates.TemplateResponse("index.html", {"request": request})
+
+@app.get("/health")
+def health():
+    return {"status": "ok"}

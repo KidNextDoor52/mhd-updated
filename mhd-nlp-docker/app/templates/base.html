@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{% block title %}MHD{% endblock %}</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <script>
+      function logout() {
+        localStorage.removeItem("token");
+        window.location.href = "/";
+      }
+      function isLoggedIn() {
+        return !!localStorage.getItem("token");
+      }
+    </script>
+</head>
+<body>
+  <header class="main-header">
+    <div class="logo-container">
+      <img src="/static/img/mhd.png" alt="MHD Logo" class="logo">
+      <h1>MHD <span>My Health Data</span></h1>
+    </div>
+    <nav>
+      <a href="/">Home</a>
+      <a href="/dashboard">Dashboard</a>
+      <a href="/equipment">Equipment</a>
+      <a href="/weightroom">Weight Room</a>
+      <a href="/training">Training</a>
+      <a href="/upload">Upload</a>
+      <a href="/profile">Profile</a>
+      <a href="#" onclick="logout()">Logout</a>
+    </nav>
+  </header>
+
+  <main class="content">
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="main-footer">
+    <p>&copy; 2025 My Health Data. All rights reserved.</p>
+  </footer>
+</body>
+</html>

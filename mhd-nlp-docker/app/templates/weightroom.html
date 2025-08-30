@@ -1,43 +1,33 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>Weight Room</title>
-  <link rel="stylesheet" href="/static/css/style.css">
-  <script src="/static/js/weightroom.js" defer></script>
-</head>
-<body>
-  <h2>Weight Room</h2>
+{% extends "base.html" %}
+{% block title %}Weightroom - MHD{% endblock %}
 
-  <!-- First-Time Modal -->
-  {% if weightroom.first_time %}
-  <div id="videoModal" class="modal">
-    <div class="modal-content">
-      <video width="600" controls>
-        <source src="/static/videos/weightroom_intro.mp4" type="video/mp4">
-        Your browser does not support video.
-      </video>
-      <button onclick="closeModal()">Continue</button>
-    </div>
+{% block content %}
+<h2>Weightroom</h2>
+
+{% if weightroom.first_time %}
+<div class="modal">
+  <div class="modal-content">
+    <video width="600" controls>
+      <source src="/static/videos/weightroom_intro.mp4" type="video/mp4">
+    </video>
+    <button onclick="document.querySelector('.modal').style.display='none'">Continue</button>
   </div>
-  {% endif %}
+</div>
+{% endif %}
 
-  <!-- Weight Room Stats -->
-  <form action="/weightroom/update" method="POST">
-    <label>Max Bench:</label>
-    <input type="number" name="bench" value="{{ weightroom.bench or '' }}"><br>
+<form action="/weightroom/update" method="POST" class="card">
+  <label>Max Bench:</label>
+  <input type="number" name="bench" value="{{ weightroom.bench or '' }}"><br>
 
-    <label>Max Squat:</label>
-    <input type="number" name="squat" value="{{ weightroom.squat or '' }}"><br>
+  <label>Max Squat:</label>
+  <input type="number" name="squat" value="{{ weightroom.squat or '' }}"><br>
 
-    <label>Vertical Jump (inches):</label>
-    <input type="number" name="vertical" value="{{ weightroom.vertical or '' }}"><br>
+  <label>Vertical Jump (in):</label>
+  <input type="number" name="vertical" value="{{ weightroom.vertical or '' }}"><br>
 
-    <label>40-Yard Dash (seconds):</label>
-    <input type="number" step="0.01" name="forty" value="{{ weightroom.forty or '' }}"><br>
+  <label>40-Yard Dash (sec):</label>
+  <input type="number" step="0.01" name="forty_dash" value="{{ weightroom.forty_dash or '' }}"><br>
 
-    <button type="submit">Save</button>
-  </form>
-
-</body>
-</html>
+  <button type="submit">Save</button>
+</form>
+{% endblock %}

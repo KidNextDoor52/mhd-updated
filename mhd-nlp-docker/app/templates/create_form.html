@@ -1,56 +1,30 @@
-<!DOCTYPE html>
-<html>
-<head>
-  <title>Create Medical History Form</title>
-  <style>
-    body { font-family: Arial, sans-serif; margin: 2em; }
-    label { display: block; margin-top: 1em; font-weight: bold; }
-    input, textarea, select, button { margin-top: 0.5em; width: 100%; max-width: 400px; }
-    .form-group { margin-bottom: 1.2em; }
-    .success { color: green; margin-top: 1em; }
-    .nav { margin-bottom: 1.5em; }
-  </style>
-</head>
-<body>
+{% extends "base.html" %}
+{% block title %}Medical Form - MHD{% endblock %}
 
-  <div class="nav">
-    <a href="/">🏠 Home</a> |
-    <a href="/dashboard">📄 Dashboard</a> |
-    <a href="/profile">👤 Profile</a>
-  </div>
+{% block content %}
+<h2>Submit Medical Form</h2>
 
-  <h2>🩺 Submit Medical History</h2>
+<form method="POST" action="/form/create" class="card">
+  <label>Name:</label>
+  <input type="text" name="name" required><br>
 
-  {% if message %}
-    <p class="success">{{ message }}</p>
-  {% endif %}
+  <label>Age:</label>
+  <input type="number" name="age" required><br>
 
-  <form method="post">
-    <div class="form-group">
-      <label for="name">Full Name:</label>
-      <input name="name" id="name" required>
-    </div>
+  <label>Injury History:</label>
+  <textarea name="injury_history"></textarea><br>
 
-    <div class="form-group">
-      <label for="age">Age:</label>
-      <input name="age" id="age" type="number" min="0" max="130" required>
-    </div>
+  <label>Status:</label>
+  <select name="status" required>
+    <option value="healthy">Healthy</option>
+    <option value="rehab">Rehab</option>
+    <option value="injured">Injured</option>
+  </select><br>
 
-    <div class="form-group">
-      <label for="injury_history">Injury History:</label>
-      <textarea name="injury_history" id="injury_history" rows="4" required></textarea>
-    </div>
+  <button type="submit">Submit</button>
+</form>
 
-    <div class="form-group">
-      <label for="status">Submission Status:</label>
-      <select name="status" id="status" required>
-        <option value="draft">📝 Save as Draft</option>
-        <option value="final">✅ Submit Final</option>
-      </select>
-    </div>
-
-    <button type="submit">🚀 Submit</button>
-  </form>
-
-</body>
-</html>
+{% if message %}
+<div class="alert">{{ message }}</div>
+{% endif %}
+{% endblock %}

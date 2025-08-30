@@ -1,7 +1,6 @@
 from fastapi import APIRouter, Request, UploadFile, File, Depends
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
-from werkzeug.utils import secure_filename
 from datetime import datetime
 import os
 from app.db import db
@@ -31,7 +30,7 @@ async def upload_page(request: Request, current_user: dict = Depends(get_current
 
 @router.post("/record")
 async def upload_record(file: UploadFile = File(...), current_user: dict = Depends(get_current_user)):
-    filename = secure_filename(file.filename)
+    filename = os.path.basename(file.filename)
     path = os.path.join(UPLOAD_FOLDER, filename)
 
     with open(path, "wb") as buffer:

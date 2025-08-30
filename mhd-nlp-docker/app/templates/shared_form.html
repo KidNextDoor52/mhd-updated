@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}Shared Form - MHD{% endblock %}
+
+{% block content %}
+<h2>Shared Medical Form</h2>
+
+<div class="card">
+  {% if form %}
+    <p><strong>Name:</strong> {{ form.name }}</p>
+    <p><strong>Age:</strong> {{ form.age }}</p>
+    <p><strong>Status:</strong> {{ form.status }}</p>
+    <p><strong>Submitted:</strong> {{ form.submitted_at }}</p>
+    <p><strong>Injury History:</strong> {{ form.injury_history }}</p>
+  {% else %}
+    <p>Form not found.</p>
+  {% endif %}
+</div>
+{% endblock %}

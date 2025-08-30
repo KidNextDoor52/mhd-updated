@@ -1,89 +1,49 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>Document Dashboard</title>
-  <style>
-    body { font-family: Arial, sans-serif; }
-    ul { list-style-type: none; padding: 0; }
-    li { margin-bottom: 1em; border-bottom: 1px solid #ccc; padding-bottom: 10px; }
-    .doc-meta { font-size: 0.95em; color: #444; }
-    .actions { margin-top: 5px; }
-    .actions a, .actions form { display: inline-block; margin-right: 10px; }
-  </style>
-</head>
-<body>
-  <h1>📄 Uploaded Documents</h1>
-  <p>
-    <a href="/profile">My Profile</a> |
-    <a href="/">Home</a> |
-    <a href="/form/create">➕ Submit New Form</a>
-    <a href="/weightroom">Unlock Weight Rooom</a>
-  </p>
+{% extends "base.html" %}
+{% block title %}MHD Dashboard{% endblock %}
 
-  <!-- Filter Section -->
-  <form method="get" action="/dashboard">
-    <label>🔖 Filter by tag:</label>
-    <input type="text" name="tag" placeholder="e.g., diagnosis"
-           value="{{ request.query_params.get('tag', '') }}">
-    
-    <label>📅 Filter by upload date:</label>
-    <input type="date" name="date"
-           value="{{ request.query_params.get('date', '') }}">
-    
-    <button type="submit">Apply Filters</button>
-    <a href="/dashboard"><button type="button">Reset</button></a>
-  </form>
+{% block content %}
+<h2>📊 My Health Data Dashboard</h2>
 
-  <!-- Documents List -->
-  <ul>
-    {% for doc in docs %}
-      <li>
-        <strong>📁 {{ doc.document_type }}</strong><br>
-        <span class="doc-meta">
-          Uploaded: {{ doc.upload_date }} <br>
-          Tags: {{ doc.tags | join(", ") if doc.tags else "None" }}<br>
-          Document ID: {{ doc.document_id }}
-        </span>
-        <div class="actions">
-          <form method="post" action="/share">
-            <input type="hidden" name="resource_id" value="{{ doc.document_id }}">
-            <input type="hidden" name="resource_type" value="document">
-            <input type="number" name="expires_in" placeholder="Expires in (hrs)" required min="1">
-            <input type="text" name="shared_with" placeholder="Share with (username)">
-            <input type="text" name="password" placeholder="Optional password">
-            <button type="submit">🔗 Share</button>
-          </form>
-        </div>
-      </li>
+<div class="dashboard-grid">
+  <!-- Total Documents -->
+  <div class="card">
+    <h3>📄 Documents</h3>
+    <p>Total Uploaded: <strong>{{ doc_count }}</strong></p>
+    <ul>
+      {% for doc in recent_docs %}
+        <li>{{ doc.document_type }} ({{ doc.upload_date }})</li>
+      {% else %}
+        <li>No documents yet.</li>
+      {% endfor %}
+    </ul>
+    <a class="btn" href="/dashboard">View All</a>
+  </div>
+
+  <!-- Equipment Overview -->
+  <div class="card">
+    <h3>🏈 Equipment Overview</h3>
+    {% if equipment %}
+      <p><strong>Cleats:</strong> {{ equipment.cleats.type if equipment.cleats else 'N/A' }} ({{ equipment.cleats.size if equipment.cleats else '' }})</p>
+      <p><strong>Helmet:</strong> {{ equipment.helmet.type if equipment.helmet else 'N/A' }}</p>
+      <p><strong>Shoulder Pads:</strong> {{ equipment.shoulder_pads.size if equipment.shoulder_pads else 'N/A' }}</p>
+      <a class="btn" href="/equipment">Manage Equipment</a>
     {% else %}
-      <li>No documents found for the selected filters.</li>
-    {% endfor %}
-  </ul>
+      <p>No equipment recorded.</p>
+      <a class="btn" href="/equipment/form">Set Up Equipment</a>
+    {% endif %}
+  </div>
 
-  <h2>🩺 Submitted Medical Forms</h2>
-  <ul>
-    {% for form in forms %}
-      <li>
-        👤 Name: {{ form.name }} |
-        🎂 Age: {{ form.age }} |
-        🗓️ Submitted: {{ form.submitted_at }} |
-        📌 Status: {{ form.status }}
-        <div class="actions">
-          <form method="post" action="/share">
-            <input type="hidden" name="resource_id" value="{{ form._id }}">
-            <input type="hidden" name="resource_type" value="form">
-            <input type="number" name="expires_in" placeholder="Expires in (hrs)" required min="1">
-            <input type="text" name="shared_with" placeholder="Share with (username)">
-            <input type="text" name="password" placeholder="Optional password">
-            <button type="submit">🔗 Share</button>
-          </form>
-        </div>
-      </li>
-    {% else %}
-      <li>No medical forms submitted yet.</li>
-    {% endfor %}
-  </ul>
-
-</body>
-</html>
+  <!-- Training Activity -->
+  <div class="card">
+    <h3>💪 Training Logs</h3>
+    <ul>
+      {% for log in training_logs %}
+        <li>{{ log.injury }} - {{ log.details }}</li>
+      {% else %}
+        <li>No training records yet.</li>
+      {% endfor %}
+    </ul>
+    <a class="btn" href="/training">Go to Training Room</a>
+  </div>
+</div>
+{% endblock %}

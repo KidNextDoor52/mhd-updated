@@ -1,30 +1,33 @@
+{% extends "base.html" %}
+{% block title %}Equipment Room - MHD{% endblock %}
+
+{% block content %}
 <h2>Equipment Room</h2>
 
-<!-- Show modal if it's first time -->
 {% if equipment.first_time %}
-<div id="videoModal" class="modal" style="display: block;">
-    <div class="modal-content">
-        <video id="introVideo" width="600" controls autoplay>
-            <source src="/static/videos/eq_intro.mp4" type="video/mp4">
-            Your browser does not support the video tag.
-        </video>
-        <button onclick="closeModal()">Continue</button>
-    </div>
+<div class="modal">
+  <div class="modal-content">
+    <video width="600" controls autoplay>
+      <source src="/static/videos/eq_intro.mp4" type="video/mp4">
+    </video>
+    <button onclick="document.querySelector('.modal').style.display='none'">Continue</button>
+  </div>
 </div>
 {% endif %}
 
-<!-- Equipment items -->
-{% for item, data in equipment.items() if item != "username" and item != "first_time" %}
-    <div>
-        <strong>{{ item | capitalize }}:</strong>
-        {% if data is string %}
-            {{ data }}
-        {% elif data is mapping %}
-            {{ data.type }} (Size: {{ data.size }})
-        {% endif %}
-        <a href="/equipment/edit/{{ item }}">Edit</a>
-    </div>
-{% endfor %}
-
-<!-- Include modal logic -->
-<script src="/static/js/equipment_video.js"></script>
+<div class="card">
+  {% for item, data in equipment.items() if item != "username" and item != "first_time" %}
+    <p>
+      <strong>{{ item|capitalize }}:</strong>
+      {% if data is string %}
+        {{ data }}
+      {% else %}
+        {{ data.type }} (Size: {{ data.size }})
+      {% endif %}
+      <a href="/equipment/edit/{{ item }}">Edit</a>
+    </p>
+  {% else %}
+    <p>No equipment data yet. <a href="/equipment/form">Fill form</a>.</p>
+  {% endfor %}
+</div>
+{% endblock %}

@@ -1,43 +1,62 @@
-<!DOCTYPE html>
-<html>
-<head>
-  <title>Equipment Form</title>
-</head>
-<body>
-  <h1>{{ editing and "Update" or "Submit" }} Equipment Preferences</h1>
+{% extends "base.html" %}
+{% block title %}{{ editing and "Update" or "Submit" }} Equipment - MHD{% endblock %}
 
-  <form method="post">
+{% block content %}
+<h2>{{ editing and "Update" or "Submit" }} Equipment Preferences</h2>
+
+<form method="post" class="card form">
+  <div class="form-group">
     <label>Cleats:</label>
-    <input name="cleats" value="{{ equipment.get('cleats', {}).get('type', '') }}" required><br>
+    <input name="cleats" value="{{ equipment.get('cleats', {}).get('type', '') }}" required>
+  </div>
+
+  <div class="form-group">
     <label>Cleat Size:</label>
-    <input name="cleats_size" value="{{ equipment.get('cleats', {}).get('size', '') }}" required><br>
+    <input name="cleats_size" value="{{ equipment.get('cleats', {}).get('size', '') }}" required>
+  </div>
 
+  <div class="form-group">
     <label>Helmet:</label>
-    <input name="helmet" value="{{ equipment.get('helmet', {}).get('type', '') }}" required><br>
+    <input name="helmet" value="{{ equipment.get('helmet', {}).get('type', '') }}" required>
+  </div>
+
+  <div class="form-group">
     <label>Helmet Size:</label>
-    <input name="helmet_size" value="{{ equipment.get('helmet', {}).get('size', '') }}" required><br>
+    <input name="helmet_size" value="{{ equipment.get('helmet', {}).get('size', '') }}" required>
+  </div>
 
+  <div class="form-group">
     <label>Shoulder Pads:</label>
-    <input name="shoulder_pads" value="{{ equipment.get('shoulder_pads', {}).get('type', '') }}" required><br>
+    <input name="shoulder_pads" value="{{ equipment.get('shoulder_pads', {}).get('type', '') }}" required>
+  </div>
+
+  <div class="form-group">
     <label>Pads Size:</label>
-    <input name="pads_size" value="{{ equipment.get('shoulder_pads', {}).get('size', '') }}" required><br>
+    <input name="pads_size" value="{{ equipment.get('shoulder_pads', {}).get('size', '') }}" required>
+  </div>
 
+  <div class="form-group">
     <label>Mouthpiece Type:</label>
-    <input name="mouthpiece" value="{{ equipment.get('mouthpiece', '') }}"><br>
+    <input name="mouthpiece" value="{{ equipment.get('mouthpiece', '') }}">
+  </div>
 
+  <div class="form-group">
     <label>Gloves Preference:</label>
-    <input name="gloves" value="{{ equipment.get('gloves', '') }}"><br>
+    <input name="gloves" value="{{ equipment.get('gloves', '') }}">
+  </div>
 
+  <div class="form-group">
     <label>Contacts or Glasses:</label>
-    <input name="contacts" value="{{ equipment.get('contacts', '') }}"><br>
+    <input name="contacts" value="{{ equipment.get('contacts', '') }}">
+  </div>
 
-    <label>Measurement Notes:</label><br>
-    <textarea name="measurement" rows="4" cols="50">{{ equipment.get('measurement', '') }}</textarea><br><br>
+  <div class="form-group">
+    <label>Measurement Notes:</label>
+    <textarea name="measurement" rows="4">{{ equipment.get('measurement', '') }}</textarea>
+  </div>
 
-    <button type="submit">{{ editing and "Update" or "Submit" }}</button>
-  </form>
+  <button type="submit" class="btn">{{ editing and "Update" or "Submit" }}</button>
+</form>
 
-  <br>
-  <a href="/equipment-room">← Back to Equipment Room</a>
-</body>
-</html>
+<p><a class="btn" href="/equipment">← Back to Equipment Room</a></p>
+{% endblock %}

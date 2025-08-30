@@ -1,28 +1,11 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Your Profile</title>
-</head>
-<body>
-    <h1>Welcome, {{ user.username }}</h1>
-    <p>Role: {{ user.role }}</p>
+{% extends "base.html" %}
+{% block title %}Profile - MHD{% endblock %}
 
-    {% if user.role == "athlete" %}
-        <h3>Athlete Access</h3>
-        <ul>
-            <li><a href="/upload">Upload New Medical Document</a></li>
-            <li><a href="/dashboard">View My Forms</a></li>
-        </ul>
-    {% elif user.role == "doctor" %}
-        <h3>Doctor/Trainer Access</h3>
-        <ul>
-            <li><a href="/dashboard">Review Athlete Submissions</a></li>
-        </ul>
-    {% else %}
-        <h3>Subscriber Access</h3>
-        <p>You are subscribed for updates and newsletters.</p>
-    {% endif %}
+{% block content %}
+<h2>My Profile</h2>
 
-    <p><a href="/">Back to Home</a></p>
-</body>
-</html>
+<div class="card">
+  <p><strong>Username:</strong> {{ user.username }}</p>
+  <p><strong>Role:</strong> {{ user.role or "User" }}</p>
+</div>
+{% endblock %}

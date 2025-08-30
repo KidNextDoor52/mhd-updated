@@ -1,73 +1,54 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>MHD Upload Portal</title>
-  <script>
-    // Check if already logged in
-    window.onload = () => {
-      const token = localStorage.getItem("token");
-      if (token) {
-        document.getElementById("logout-section").style.display = "block";
-        document.getElementById("login-section").style.display = "none";
-      }
-    };
+{% extends "base.html" %}
+{% block title %}Welcome - MHD{% endblock %}
 
-    async function login(event) {
-      event.preventDefault();
-      const form = new FormData(event.target);
+{% block content %}
+<h2>Welcome to MHD Portal</h2>
 
-      const res = await fetch("/token", {
-        method: "POST",
-        body: new URLSearchParams({
-          username: form.get("username"),
-          password: form.get("password")
-        }),
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded"
-        }
-      });
+<div id="login-section" class="card">
+  <h3>Login</h3>
+  <form onsubmit="login(event)">
+    <label>Username:</label>
+    <input name="username" required><br>
+    <label>Password:</label>
+    <input name="password" type="password" required><br>
+    <button type="submit">Login</button>
+  </form>
+</div>
 
-      const data = await res.json();
+<div id="logout-section" class="card" style="display:none;">
+  <p>You are logged in.</p>
+  <button onclick="logout()">Logout</button>
+</div>
 
-      if (res.ok && data.access_token) {
-        localStorage.setItem("token", data.access_token);
-        window.location.href = "/dashboard";
-      } else {
-        alert("Login failed: " + (data.detail || "Unknown error."));
-      }
+<script>
+  window.onload = () => {
+    const token = localStorage.getItem("token");
+    if (token) {
+      document.getElementById("logout-section").style.display = "block";
+      document.getElementById("login-section").style.display = "none";
     }
+  };
 
-    function logout() {
-      localStorage.removeItem("token");
-      window.location.reload();
+  async function login(event) {
+    event.preventDefault();
+    const form = new FormData(event.target);
+
+    const res = await fetch("/auth/token", {
+      method: "POST",
+      body: new URLSearchParams({
+        username: form.get("username"),
+        password: form.get("password")
+      }),
+      headers: { "Content-Type": "application/x-www-form-urlencoded" }
+    });
+
+    const data = await res.json();
+    if (res.ok && data.access_token) {
+      localStorage.setItem("token", data.access_token);
+      window.location.href = "/dashboard";
+    } else {
+      alert("Login failed: " + (data.detail || "Unknown error"));
     }
-  </script>
-</head>
-<body>
-  <h1>Welcome to MHD Portal</h1>
-
-  <!-- Navigation Links -->
-  <p><a href="/dashboard">Dashboard</a></p>
-  <p><a href="/profile">View My Profile</a></p>
-  <p><a href="/form/create">Submit Medical Form</a></p>
-
-  <!-- Login Form -->
-  <div id="login-section">
-    <h2>Login</h2>
-    <form onsubmit="login(event)">
-      <label>Username:</label>
-      <input name="username" required><br>
-      <label>Password:</label>
-      <input name="password" type="password" required><br>
-      <button type="submit">Login</button>
-    </form>
-  </div>
-
-  <!-- Logout Button -->
-  <div id="logout-section" style="display: none;">
-    <p>You are logged in.</p>
-    <button onclick="logout()">Logout</button>
-  </div>
-</body>
-</html>
+  }
+</script>
+{% endblock %}
