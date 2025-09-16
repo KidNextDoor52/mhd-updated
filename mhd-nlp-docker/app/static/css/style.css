@@ -1,9 +1,24 @@
 body {
-    font-family: "Segoe UI", Roboto, Arial, sans-serif;
-    margin: 0;
-    padding: 0;
-    background: #f4f7fb;
-    color: #333;
+  font-family: "Segoe UI", Roboto, Arial, sans-serif;
+  margin: 0;
+  padding: 0;
+  background: #f4f7fb url("/static/img/mhd.png") no-repeat center center fixed;
+  background-size: 40%;
+  color: #333;
+  background-blend-mode: lighten; /* makes it look faded */
+}
+
+.hero {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+.hero h2 {
+  font-size: 1.8rem;
+  margin: 0.5rem 0;
+}
+.tagline {
+  font-size: 1.1rem;
+  color: #666;
 }
 
 /* Header */
@@ -110,3 +125,197 @@ button:hover, .btn:hover {
     gap: 1.5rem;
     margin-top: 1.5rem;
 }
+
+.dashboard-metrics {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1.5rem;
+    margin: 2rem 0;
+}
+
+.metric-card {
+    background: white;
+    padding: 1.5rem;
+    border-radius: 10px;
+    text-align: center;
+    box-shadow: 0px 3px 8px rgba(0,0,0,0.1);
+    transition: transform 0.2s ease-in-out;
+}
+
+.metric-card:hover {
+    transform: translateY(-5px);
+}
+.fade-in {
+    animation: fadeIn 0.8s ease-in-out;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Hero Section */
+.hero {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+.hero-logo {
+  max-height: 100px;
+}
+.tagline {
+  font-size: 1.1rem;
+  color: #666;
+  margin-top: 0.5rem;
+}
+
+/* Grid for Auth Forms */
+.forms-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.5rem;
+  margin: 0 auto;
+  max-width: 1000px;
+}
+
+/* Auth cards */
+.auth-card {
+  padding: 1.5rem;
+  border-radius: 8px;
+  background: white;
+  box-shadow: 0px 3px 6px rgba(0,0,0,0.08);
+}
+
+/* Buttons */
+.btn.primary { background: #0b1524; color: white; }
+.btn.success { background: #28a745; color: white; }
+.btn.warning { background: #ffc107; color: black; }
+.btn.danger { background: #dc3545; color: white; }
+
+/* Google button */
+.btn.google-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #fff;
+  border: 1px solid #dadce0;
+  color: #3c4043;
+  font-weight: 500;
+  border-radius: 4px;
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  transition: box-shadow 0.2s ease;
+}
+
+.btn.google-btn:hover {
+  box-shadow: 0 1px 3px rgba(60,64,67,0.3);
+  background: #f7f8f8;
+}
+
+.google-icon {
+  height: 5px;
+  width: 5px;
+  margin-right: 8px;
+}
+
+/* Dashboard container */
+.dashboard-container {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+/* Dashboard card polish */
+.dashboard-card {
+  padding: 1.5rem;
+  border-radius: 8px;
+  background: white;
+  box-shadow: 0px 3px 6px rgba(0,0,0,0.08);
+}
+
+/* Wide card (activity feed spans 2 columns on wide screens) */
+.wide-card {
+  grid-column: span 2;
+}
+
+/* Lists inside cards */
+.dashboard-card ul {
+  list-style: none;
+  padding: 0;
+  margin: 0.5rem 0 0 0;
+}
+.dashboard-card li {
+  padding: 0.5rem 0;
+  border-bottom: 1px solid #eee;
+}
+.dashboard-card li:last-child {
+  border-bottom: none;
+}
+
+/* Timestamp style */
+.timestamp {
+  font-size: 0.85rem;
+  color: #777;
+  margin-left: 6px;
+}
+/* Add watermark to all cards */
+.card {
+  position: relative;
+  background: white;
+  padding: 1.5rem;
+  border-radius: 8px;
+  box-shadow: 0px 2px 6px rgba(0,0,0,0.1);
+  margin: 1rem 0;
+  overflow: hidden; /* keeps watermark inside card */
+}
+
+.card::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 80%;
+  height: 80%;
+  background: url("/static/img/mhd.png") no-repeat center center;
+  background-size: contain;
+  opacity: 0.05; /* adjust transparency */
+  transform: translate(-50%, -50%);
+  pointer-events: none; /* watermark won’t block clicks */
+}
+
+.forgot-link {
+  margin-top: 0.5rem;
+  text-align: right;
+}
+.forgot-link a {
+  font-size: 0.9rem;
+  color: #0b1524;
+  text-decoration: none;
+}
+.forgot-link a:hover {
+  text-decoration: underline;
+}
+
+
+/* styling and dashboard updates*/
+.table-wrap { overflow-x: auto; }
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.95rem;
+}
+.table th, .table td {
+  border-bottom: 1px solid #eee;
+  padding: 8px 10px;
+  text-align: left;
+}
+.table th {
+  background: #f8fafc;
+  font-weight: 600;
+}
+
+.alert {
+  padding: 10px 12px;
+  border-radius: 6px;
+  margin: 10px 0 14px;
+}
+.alert.success { background: #e6f6ec; color: #1d7a3d; border: 1px solid #bde5c8; }
+.alert.danger  { background: #fdecea; color: #b02a37; border: 1px solid #f5c2c7; }

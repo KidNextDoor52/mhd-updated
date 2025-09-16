@@ -2,17 +2,38 @@
 {% block title %}Upload Records - MHD{% endblock %}
 
 {% block content %}
+
+{% if request.query_params.get('msg') %}
+  <div class="alert success">{{ request.query_params.get('msg') }}</div>
+{% endif %}
+{% if request.query_params.get('err') %}
+  <div class="alert danger">{{ request.query_params.get('err') }}</div>
+{% endif %}
+
 <h2>Upload a Document</h2>
 
 <form action="/upload/record" method="POST" enctype="multipart/form-data" class="card">
+  <label>File</label>
   <input type="file" name="file" required>
-  <button type="submit">Upload</button>
+
+  <label style="display:block; margin-top:10px;">Categories (choose one or more)</label>
+  <select name="category" multiple size="3">
+    <option value="Medical">Medical</option>
+    <option value="Equipment">Equipment</option>
+    <option value="Performance">Performance</option>
+  </select>
+
+  <small class="tagline">Tip: upload a CSV to auto-fill your dashboard sections.</small>
+  <button type="submit" class="btn" style="margin-top:10px;">Upload</button>
 </form>
 
 <h3>Uploaded Files</h3>
 <ul>
   {% for file in uploaded_files %}
-    <li>{{ file.filename }} - {{ file.upload_date }}</li>
+    <li>
+      {{ file.category }} - {{ file.filename }} ({{ file.upload_date }})
+      <a href="/upload/download/{{ file._id }}" target="_blank">View</a>
+    </li>
   {% else %}
     <li>No files uploaded yet.</li>
   {% endfor %}

@@ -3,6 +3,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from app.db import db
 from app.auth import get_current_user
+from app.utils.logger import log_activity
 
 router = APIRouter(prefix="/training", tags=["training"])
 templates = Jinja2Templates(directory="app/templates")
@@ -30,11 +31,12 @@ async def update_training(
     details: str = Form(...),
     current_user: dict = Depends(get_current_user),
 ):
-    training_collection.insert_one({
+    record = {
         "username": current_user["username"],
         "injury": injury,
         "details": details,
-    })
+    }
+    training_collection.insert_one(record)
 
     training_flags.update_one(
         {"username": current_user["username"]},
@@ -42,4 +44,11 @@ async def update_training(
         upsert=True,
     )
 
+    log_activity(
+        user_id=current_user["username"],
+        action="add_training_log",
+        metadata=record
+    )
+
     return RedirectResponse("/training", status_code=303)
+

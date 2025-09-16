@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Share Link Created{% endblock %}
+
+{% block content %}
+<div class="card">
+  <h3>🔗 Share Link Created</h3>
+  <p><strong>Recipient:</strong> {{ link.recipient_email }}</p>
+  <p><strong>Expires:</strong> {{ link.expires_at }}</p>
+
+  {% if link.allowed_categories and link.allowed_categories|length > 0 %}
+    <p><strong>Scope:</strong> Categories — {{ link.allowed_categories|join(", ") }}</p>
+  {% elif link.allowed_file_ids and link.allowed_file_ids|length > 0 %}
+    <p><strong>Scope:</strong> Specific file(s)</p>
+  {% else %}
+    <p><strong>Scope:</strong> All your documents</p>
+  {% endif %}
+
+  <hr>
+
+  <h4>Share these URLs with the recipient (email must match):</h4>
+  <ul>
+    {% for f in files %}
+      <li>
+        {{ f.filename }} — 
+        <code>{{ f.download_url }}</code>
+      </li>
+    {% else %}
+      <li>No files matched the scope.</li>
+    {% endfor %}
+  </ul>
+
+  <p style="margin-top:1rem;">
+    <em>Tip:</em> Send the appropriate link above to <strong>{{ link.recipient_email }}</strong>.  
+    When they open it, the system checks the token, expiry, and their email before allowing download.
+  </p>
+
+  <a class="btn" href="/dashboard">Back to Dashboard</a>
+</div>
+{% endblock %}

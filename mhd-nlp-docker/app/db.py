@@ -10,83 +10,16 @@ athletes = db["athletes"]
 documents = db["documents"]
 users = db["users"]
 permissions = db["permissions"]
-medical_history = ["medical_history"]
+medical_history = db["medical_history"]
 physical_exam = db["physical_exam"]
 shared_links = db["shared_links"]
 
-"""
-RUNNING ENVIRONMENTS 
+#Dashboard Collections
+equipment = db["equipment"]
+training = db["training"]
+training_flags = db["training_flags"]
+uploads = db["uploads"]
+uplaod_flags = db["upload_flags"]
+weightroom = db["weightroom"]
 
-🛠️ Dev:
-(bash)
-export MHD_ENV=dev
-docker-compose -f docker/docker-compose.dev.yml up -d
-uvicorn main:app --reload
-
-🧪 Test:
-(bash)
-export MHD_ENV=test
-docker-compose -f docker/docker-compose.test.yml up -ddocker-compose up
-time="2025-07-20T15:26:48-05:00" level=warning msg="C:\\Users\\mccra\\OneDrive\\Documents\\GitHub\\mhd-updated\\mhd-nlp-docker\\docker-compose.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
-[+] Running 2/2
- ✔ Network mhd-nlp-docker_default      Created                                                                                                          0.1s 
- ✔ Container mhd-nlp-docker-backend-1  Created                                                                                                          0.4s 
-Attaching to backend-1
-backend-1  | Traceback (most recent call last):
-backend-1  |   File "/usr/local/bin/uvicorn", line 8, in <module>
-backend-1  |     sys.exit(main())                                                                                                                            
-backend-1  |   File "/usr/local/lib/python3.10/site-packages/click/core.py", line 1442, in __call__
-backend-1  |     return self.main(*args, **kwargs)                                                                                                           
-backend-1  |   File "/usr/local/lib/python3.10/site-packages/click/core.py", line 1363, in main                                                              
-backend-1  |     rv = self.invoke(ctx)                                                                                                                       
-backend-1  |   File "/usr/local/lib/python3.10/site-packages/click/core.py", line 1226, in invoke
-backend-1  |     return ctx.invoke(self.callback, **ctx.params)                                                                                              
-backend-1  |   File "/usr/local/lib/python3.10/site-packages/click/core.py", line 794, in invoke                                                             
-backend-1  |     return callback(*args, **kwargs)                                                                                                            
-backend-1  |   File "/usr/local/lib/python3.10/site-packages/uvicorn/main.py", line 413, in main                                                             
-backend-1  |     run(
-backend-1  |   File "/usr/local/lib/python3.10/site-packages/uvicorn/main.py", line 580, in run                                                              
-backend-1  |     server.run()                                                                                                                                
-backend-1  |   File "/usr/local/lib/python3.10/site-packages/uvicorn/server.py", line 67, in run
-backend-1  |     return asyncio.run(self.serve(sockets=sockets))                                                                                             
-backend-1  |   File "/usr/local/lib/python3.10/asyncio/runners.py", line 44, in run                                                                          
-backend-1  |     return loop.run_until_complete(main)                                                                                                        
-backend-1  |   File "uvloop/loop.pyx", line 1518, in uvloop.loop.Loop.run_until_complete
-backend-1  |   File "/usr/local/lib/python3.10/site-packages/uvicorn/server.py", line 71, in serve                                                           
-backend-1  |     await self._serve(sockets)                                                                                                                  
-backend-1  |   File "/usr/local/lib/python3.10/site-packages/uvicorn/server.py", line 78, in _serve                                                          
-backend-1  |     config.load()
-backend-1  |   File "/usr/local/lib/python3.10/site-packages/uvicorn/config.py", line 436, in load                                                           
-backend-1  |     self.loaded_app = import_from_string(self.app)                                                                                              
-backend-1  |   File "/usr/local/lib/python3.10/site-packages/uvicorn/importer.py", line 22, in import_from_string                                            
-backend-1  |     raise exc from None
-backend-1  |   File "/usr/local/lib/python3.10/site-packages/uvicorn/importer.py", line 19, in import_from_string                                            
-backend-1  |     module = importlib.import_module(module_str)                                                                                                
-backend-1  |   File "/usr/local/lib/python3.10/importlib/__init__.py", line 126, in import_module                                                            
-backend-1  |     return _bootstrap._gcd_import(name[level:], package, level)
-backend-1  |   File "<frozen importlib._bootstrap>", line 1050, in _gcd_import                                                                               
-backend-1  |   File "<frozen importlib._bootstrap>", line 1027, in _find_and_load                                                                            
-backend-1  |   File "<frozen importlib._bootstrap>", line 1006, in _find_and_load_unlocked                                                                   
-backend-1  |   File "<frozen importlib._bootstrap>", line 688, in _load_unlocked                                                                             
-backend-1  |   File "<frozen importlib._bootstrap_external>", line 883, in exec_module
-backend-1  |   File "<frozen importlib._bootstrap>", line 241, in _call_with_frames_removed                                                                  
-backend-1  |   File "/app/app/main.py", line 5, in <module>                                                                                                  
-backend-1  |     from .db import documents, athletes, users, medical_history, shared_links, db                                                               
-backend-1  |   File "/app/app/db.py", line 2, in <module>
-backend-1  |     import settings                                                                                                                             
-backend-1  | ModuleNotFoundError: No module named 'settings'                                                                                                 
-backend-1 exited with code 1
-
-docker
-uvicorn main:app --reload
-
-Each environment now has:
-Its own isolated MongoDB
-Its own .env config
-Runtime switching with MHD_ENV
-
-🧪 Future Option: Add pytest/test automation
-Once test env is running, you can add test scripts like:
-(bash)
-pytest tests/ --env=test
-"""
+activity_logs = db["activity_logs"]

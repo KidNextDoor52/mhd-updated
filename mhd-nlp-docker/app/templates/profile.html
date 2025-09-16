@@ -4,8 +4,66 @@
 {% block content %}
 <h2>My Profile</h2>
 
+{# optional flash if you redirect with ?saved=1 #}
+{% if request.query_params.get('saved') %}
+  <div class="alert success">Profile saved.</div>
+{% endif %}
+
 <div class="card">
   <p><strong>Username:</strong> {{ user.username }}</p>
   <p><strong>Role:</strong> {{ user.role or "User" }}</p>
+
+  {% if profile %}
+    <p><strong>Name:</strong> {{ profile.full_name or "—" }}</p>
+    <p><strong>Email:</strong> {{ profile.email or "—" }}</p>
+    <p><strong>DOB:</strong> {{ profile.dob or "—" }}</p>
+    <p><strong>Phone:</strong> {{ profile.phone or "—" }}</p>
+    <p><strong>Address:</strong> {{ profile.address or "—" }}</p>
+
+    {% if profile.emergency %}
+      <p><strong>Emergency Contact:</strong> {{ profile.emergency.name }} ({{ profile.emergency.phone }})</p>
+    {% endif %}
+
+    {% if profile.sport_info %}
+      <p><strong>Team:</strong> {{ profile.sport_info.team or "—" }}</p>
+      <p><strong>Position:</strong> {{ profile.sport_info.position or "—" }}</p>
+    {% endif %}
+  {% else %}
+    <p>No profile on file yet.</p>
+  {% endif %}
+</div>
+
+<div class="card">
+  <h3>Update</h3>
+  <form action="/profile/update" method="post" class="form-grid">
+    <label>Name</label>
+    <input name="full_name" value="{{ profile.full_name or '' }}">
+
+    <label>Email</label>
+    <input name="email" type="email" value="{{ profile.email or '' }}">
+
+    <label>DOB</label>
+    <input name="dob" placeholder="YYYY-MM-DD" value="{{ profile.dob or '' }}">
+
+    <label>Phone</label>
+    <input name="phone" value="{{ profile.phone or '' }}">
+
+    <label>Address</label>
+    <input name="address" value="{{ profile.address or '' }}">
+
+    <label>Emergency Name</label>
+    <input name="emergency_name" value="{{ (profile.emergency.name if profile.emergency else '') }}">
+
+    <label>Emergency Phone</label>
+    <input name="emergency_phone" value="{{ (profile.emergency.phone if profile.emergency else '') }}">
+
+    <label>Team</label>
+    <input name="team" value="{{ (profile.sport_info.team if profile.sport_info else '') }}">
+
+    <label>Position</label>
+    <input name="position" value="{{ (profile.sport_info.position if profile.sport_info else '') }}">
+
+    <button class="btn primary" type="submit">Save</button>
+  </form>
 </div>
 {% endblock %}

@@ -18,19 +18,44 @@
   <header class="main-header">
     <div class="logo-container">
       <img src="/static/img/mhd.png" alt="MHD Logo" class="logo">
-      <h1>MHD <span>My Health Data</span></h1>
+      <h1><span>My Health Data</span></h1>
     </div>
     <nav>
-      <a href="/">Home</a>
-      <a href="/dashboard">Dashboard</a>
-      <a href="/equipment">Equipment</a>
-      <a href="/weightroom">Weight Room</a>
-      <a href="/training">Training</a>
-      <a href="/upload">Upload</a>
-      <a href="/profile">Profile</a>
-      <a href="#" onclick="logout()">Logout</a>
+      <a href="/" >Home</a>
+      <a href="javascript:navToProtected('/dashboard')">Dashboard</a>
+      <a href="javascript:navToProtected('/equipment/')">Equipment</a>
+      <a href="javascript:navToProtected('/weightroom/')">Weightroom</a>
+      <a href="javascript:navToProtected('/training/')">Training Room</a>
+      <a href="javascript:navToProtected('/upload/')">Upload</a>
+      <a href="javascript:navToProtected('/profile')">Profile</a>
+      
+      <a href="javascript:logout()">Logout</a>
     </nav>
   </header>
+  <script>
+  async function logout() {
+    // pass access token for revocation
+    const token = localStorage.getItem("token");
+    await fetch("/auth/logout", {
+      method: "POST",
+      headers: token ? { "Authorization": "Bearer " + token } : {}
+    });
+    localStorage.removeItem("token");
+    // also nukes refresh in cookie (server side)
+    window.location.href = "/";
+  }
+
+  // Optional: require login for protected links
+  function navToProtected(path) {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      window.location.href = "/";
+      return;
+    }
+    window.location.href = path;
+  }
+</script>
+
 
   <main class="content">
     {% block content %}{% endblock %}

@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}Share Document{% endblock %}
+
+{% block content %}
+<div class="card">
+  <h3>Securely Share</h3>
+
+  {% if file %}
+    <p><strong>File:</strong> {{ file.filename }} ({{ file.upload_date }})</p>
+  {% endif %}
+
+  <form method="post" action="/share/new">
+    {% if preselected_id %}
+      <input type="hidden" name="file_id" value="{{ preselected_id }}">
+    {% endif %}
+
+    <label>Recipient Email</label>
+    <input type="email" name="recipient_email" required>
+
+    <label>Expires In (hours)</label>
+    <input type="number" name="expires_in_hours" value="24" min="1" max="720">
+
+    <fieldset style="margin-top:1rem;">
+      <legend>Scope</legend>
+      {% if file %}
+        <label><input type="radio" name="scope" value="file" checked> Only this file</label>
+      {% endif %}
+      <label style="margin-left:1rem;">
+        <input type="radio" name="scope" value="category" {% if not file %}checked{% endif %}>
+        By category
+      </label>
+    </fieldset>
+
+    <div style="margin-top:.5rem;">
+      <label><input type="checkbox" name="categories" value="medical"> Medical</label>
+      <label style="margin-left:1rem;"><input type="checkbox" name="categories" value="performance"> Performance</label>
+      <label style="margin-left:1rem;"><input type="checkbox" name="categories" value="equipment"> Equipment</label>
+      <p class="hint">If “By category” is selected, only checked categories will be visible.
+        If none are checked, all categories are allowed.</p>
+    </div>
+
+    <button class="btn primary" type="submit">Create Share Link</button>
+    <a class="btn" href="/dashboard">Cancel</a>
+  </form>
+</div>
+{% endblock %}

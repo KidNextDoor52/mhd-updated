@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}Confirm Email - MHD{% endblock %}
+{% block content %}
+<div class="card" style="max-width:520px;">
+  <h2>Confirm Access</h2>
+  <p>This link is restricted to the authorized recipient. Enter the email address it was shared with.</p>
+  <form method="GET" action="/share/{{ token }}">
+    <label>Email</label>
+    <input type="email" name="email" required>
+    <button class="btn primary" type="submit" style="margin-top:10px;">View Records</button>
+  </form>
+  <p class="tagline">Access is limited and time-boxed; owners can revoke at any time.</p>
+</div>
+{% endblock %}

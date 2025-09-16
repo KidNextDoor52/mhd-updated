@@ -1,33 +1,25 @@
 {% extends "base.html" %}
-{% block title %}Equipment Room - MHD{% endblock %}
+{% block title %}Equipment{% endblock %}
 
 {% block content %}
-<h2>Equipment Room</h2>
-
-{% if equipment.first_time %}
-<div class="modal">
-  <div class="modal-content">
-    <video width="600" controls autoplay>
-      <source src="/static/videos/eq_intro.mp4" type="video/mp4">
-    </video>
-    <button onclick="document.querySelector('.modal').style.display='none'">Continue</button>
-  </div>
-</div>
-{% endif %}
+<h2>🏈 Equipment</h2>
 
 <div class="card">
-  {% for item, data in equipment.items() if item != "username" and item != "first_time" %}
-    <p>
-      <strong>{{ item|capitalize }}:</strong>
-      {% if data is string %}
-        {{ data }}
-      {% else %}
-        {{ data.type }} (Size: {{ data.size }})
-      {% endif %}
-      <a href="/equipment/edit/{{ item }}">Edit</a>
-    </p>
+  {% if equipment and equipment.items and equipment.items|length > 0 %}
+    <ul>
+      {% for it in equipment.items %}
+        <li>
+          <strong>{{ it.category or 'Item' }}</strong>
+          {% if it.brand %} — {{ it.brand }}{% endif %}
+          {% if it.type %} {{ it.type }}{% endif %}
+          {% if it.size %} ({{ it.size }}){% endif %}
+          {% if it.notes %} — <em>{{ it.notes }}</em>{% endif %}
+        </li>
+      {% endfor %}
+    </ul>
   {% else %}
-    <p>No equipment data yet. <a href="/equipment/form">Fill form</a>.</p>
-  {% endfor %}
+    <p>No equipment on file yet.</p>
+  {% endif %}
+  <a class="btn" href="/equipment/form">Update Equipment</a>
 </div>
 {% endblock %}
