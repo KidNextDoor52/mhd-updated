@@ -20,6 +20,7 @@ from app.utils.logger import log_activity
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
+
 # --- OAuth Setup (Google) ---
 config = Config(environ=os.environ)
 oauth = OAuth(config)
@@ -35,19 +36,24 @@ oauth.register(
 # ---------- Signup ----------
 @router.post("/signup", status_code=201)
 def signup(username: str = Form(...), password: str = Form(...), email: str = Form(...)):
+    email = email.strip().lower()
+    username = username.strip()
+    
+
     if users.find_one({"username": username}):
         raise HTTPException(status_code=409, detail="Username already exists")
-    if users.find_one({"email": email}):
+
+    # case-insensitive email uniqueness
+    if users.find_one({"email": {"$regex": f"^{email}$", "$options": "i"}}):
         raise HTTPException(status_code=409, detail="Email already registered")
 
-    doc = {
+    users.insert_one({
         "username": username,
-        "email": email,
+        "email": email,                # store normalized
         "password": get_password_hash(password),
         "role": "user",
         "created_at": datetime.now(timezone.utc),
-    }
-    users.insert_one(doc)
+    })
 
     log_activity(user_id=username, action="signup", metadata={"email": email})
     return {"message": "User created"}
@@ -98,7 +104,7 @@ async def auth_via_google_callback(request: Request):
     if not user_info:
         raise HTTPException(status_code=400, detail="Failed to retrieve Google user info")
 
-    email = user_info["email"]
+    email = user_info["email"].strip().lower()
     username = user_info.get("name", email.split("@")[0])
 
     user = users.find_one({"email": email})

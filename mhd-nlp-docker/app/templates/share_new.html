@@ -9,7 +9,7 @@
     <p><strong>File:</strong> {{ file.filename }} ({{ file.upload_date }})</p>
   {% endif %}
 
-  <form method="post" action="/share/new">
+  <form method="post" action="/share/new" id="share-form">
     {% if preselected_id %}
       <input type="hidden" name="file_id" value="{{ preselected_id }}">
     {% endif %}
@@ -24,23 +24,68 @@
       <legend>Scope</legend>
       {% if file %}
         <label><input type="radio" name="scope" value="file" checked> Only this file</label>
+        <label style="margin-left:1rem;"><input type="radio" name="scope" value="category"> By category</label>
+      {% else %}
+        <label><input type="radio" name="scope" value="file"> By file</label>
+        <label style="margin-left:1rem;"><input type="radio" name="scope" value="category" checked> By category</label>
       {% endif %}
-      <label style="margin-left:1rem;">
-        <input type="radio" name="scope" value="category" {% if not file %}checked{% endif %}>
-        By category
-      </label>
     </fieldset>
 
-    <div style="margin-top:.5rem;">
+    {# FILE PICKER — only when scope=file AND nothing preselected #}
+    <div id="file-options" style="margin-top:.75rem; {% if file %}display:none;{% else %}display:none;{% endif %}">
+      {% if not file %}
+        <label for="file_ids"><strong>Choose file(s)</strong></label>
+        <select name="file_ids" id="file_ids" multiple size="8" style="width:100%;max-width:560px;">
+          {% for f in uploaded_files %}
+            <option value="{{ f._id }}">{{ f.filename }} ({{ f.upload_date }})</option>
+          {% endfor %}
+        </select>
+        {% if uploaded_files|length == 0 %}
+          <p class="hint">No uploads yet. <a href="/upload">Upload a document</a> first.</p>
+        {% else %}
+          <p class="hint" style="margin-top:.35rem;">Hold Ctrl/Cmd to select multiple.</p>
+        {% endif %}
+      {% else %}
+        <p class="hint">This link will allow the recipient to access only the file shown above.</p>
+      {% endif %}
+    </div>
+
+    {# CATEGORY CHECKBOXES — when scope=category #}
+    <div id="category-options" style="margin-top:.75rem; {% if file %}display:none;{% else %}display:block;{% endif %}">
       <label><input type="checkbox" name="categories" value="medical"> Medical</label>
       <label style="margin-left:1rem;"><input type="checkbox" name="categories" value="performance"> Performance</label>
       <label style="margin-left:1rem;"><input type="checkbox" name="categories" value="equipment"> Equipment</label>
-      <p class="hint">If “By category” is selected, only checked categories will be visible.
-        If none are checked, all categories are allowed.</p>
+      <p class="hint" style="margin-top:.35rem;">
+        If “By category” is selected, only checked categories will be visible.
+        If none are checked, all categories are allowed.
+      </p>
     </div>
 
-    <button class="btn primary" type="submit">Create Share Link</button>
-    <a class="btn" href="/dashboard">Cancel</a>
+    <div style="margin-top:1rem;">
+      <button class="btn primary" type="submit">Create Share Link</button>
+      <a class="btn" href="/dashboard">Cancel</a>
+    </div>
   </form>
 </div>
+
+<script>
+  // Toggle file vs category sections
+  const radios = document.querySelectorAll('input[name="scope"]');
+  const fileBlock = document.getElementById('file-options');
+  const catBlock  = document.getElementById('category-options');
+
+  function syncBlocks() {
+    const val = document.querySelector('input[name="scope"]:checked').value;
+    if (val === 'file') {
+      if (fileBlock) fileBlock.style.display = 'block';
+      if (catBlock)  catBlock.style.display = 'none';
+    } else {
+      if (fileBlock) fileBlock.style.display = 'none';
+      if (catBlock)  catBlock.style.display = 'block';
+    }
+  }
+  radios.forEach(r => r.addEventListener('change', syncBlocks));
+  // initial state
+  syncBlocks();
+</script>
 {% endblock %}

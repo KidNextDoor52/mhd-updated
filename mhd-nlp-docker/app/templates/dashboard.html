@@ -4,16 +4,19 @@
 {% block content %}
 <div class="dashboard-container fade-in">
   <div class="hero">
-    <h2>📊 My Health Data Dashboard</h2>
+    <h2 class="dashboard-title">
+      <img src="/static/img/mhd3.png" alt="MHD" class="dashboard-logo" />
+      My Health Data Dashboard
+    </h2>
     <p class="tagline">Your health, training, and performance at a glance</p>
-  </div>
+</div>
 
   <div class="dashboard-grid">
     <!-- Documents -->
     <div class="card dashboard-card">
       <h3>📄 Documents</h3>
       <p>Total Uploaded: <strong>{{ doc_count }}</strong></p>
-      <ul>
+      <ul class="scroll-5">
         {% for doc in recent_docs %}
           <li>
             {{ (doc.category|join(", ")) or "—" }} — {{ doc.filename }} ({{ doc.upload_date }})
@@ -50,7 +53,7 @@
     <!-- Medical Docs -->
     <div class="card dashboard-card">
       <h3>🩺 Medical Documents</h3>
-      <ul>
+      <ul class="scroll-5">
         {% for doc in grouped_docs.medical %}
           <li>{{ doc.filename }} ({{ doc.upload_date }}) <a href="/upload/download/{{ doc._id }}">View</a></li>
         {% else %}
@@ -74,7 +77,7 @@
     <!-- Equipment Docs -->
     <div class="card dashboard-card">
       <h3>🏈 Equipment Documents</h3>
-      <ul>
+      <ul class="scroll-5">
         {% for doc in grouped_docs.equipment %}
           <li>{{ doc.filename }} ({{ doc.upload_date }}) <a href="/upload/download/{{ doc._id }}">View</a></li>
         {% else %}
@@ -121,7 +124,7 @@
 
     <!-- Training -->
     <div class="card dashboard-card">
-      <h3>💪 Training Room Logs</h3>
+      <h3>🩺 Training Room Logs</h3>
       <p>Total Sessions: <strong>{{ training_count }}</strong></p>
       <ul>
         {% for log in training_logs %}

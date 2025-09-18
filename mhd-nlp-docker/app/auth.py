@@ -9,7 +9,7 @@ from jose import JWTError, jwt
 from passlib.context import CryptContext
 from dotenv import load_dotenv
 from bson import ObjectId
-
+import re
 from .db import db, users  # your existing db handle + users collection
 
 # --- env & crypto ------------------------------------------------------------
@@ -45,6 +45,16 @@ def verify_password(plain: str, hashed: str) -> bool:
 # --- user lookup -------------------------------------------------------------
 def get_user_by_username(username: str) -> Optional[dict]:
     return users.find_one({"username": username})
+
+def get_user_by_login(login: str) -> Optional[dict]:
+    """Login can be either username or email."""
+    login = (login or "").strip()        # <-- trim whitespace
+    return users.find_one({
+        "$or": [
+            {"username": login},         # exact match for username
+            {"email": login.lower()},    # lowercase for email
+        ]
+    })
 
 # --- JWT helpers -------------------------------------------------------------
 def _now_utc() -> datetime:
@@ -180,8 +190,11 @@ def get_current_user_optional(request: Request) -> Optional[dict]:
         return None
 
 # --- simple auth helper for router ------------------------------------------
-def authenticate_user(username: str, password: str) -> Optional[dict]:
-    user = get_user_by_username(username)
-    if not user or not verify_password(password, user["password"]):
+def authenticate_user(login: str, password: str) -> Optional[dict]:
+    user = get_user_by_login(login)
+    # If the user has no password (e.g., Google-only), reject password login.
+    if not user or not user.get("password"):
+        return None
+    if not verify_password(password, user["password"]):
         return None
     return user

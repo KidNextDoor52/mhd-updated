@@ -119,12 +119,36 @@ button:hover, .btn:hover {
     background: #142b47;
 }
 
+.dashboard-title {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;           /* space between logo and text */
+  line-height: 1.2;
+  margin: 0;
+}
+
+.dashboard-logo {
+  height: 28px;        /* keep it small */
+  width: auto;
+  flex: 0 0 auto;
+  object-fit: contain; /* guards odd images */
+  filter: drop-shadow(0 0 0 rgba(0,0,0,0)); /* ensure no extra shadow */
+}
+
+/* Optional: shrink a bit on very small screens */
+@media (max-width: 480px) {
+  .dashboard-logo { height: 22px; }
+}
+
 .dashboard-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
     gap: 1.5rem;
     margin-top: 1.5rem;
 }
+
+
 
 .dashboard-metrics {
     display: grid;
@@ -178,11 +202,20 @@ button:hover, .btn:hover {
 }
 
 /* Auth cards */
-.auth-card {
-  padding: 1.5rem;
-  border-radius: 8px;
-  background: white;
-  box-shadow: 0px 3px 6px rgba(0,0,0,0.08);
+.auth-card form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem; /* consistent vertical spacing */
+}
+
+.auth-card label {
+  margin-bottom: 0.25rem;
+}
+
+.auth-card input {
+  width: 100%;          /* all same width */
+  padding: 0.5rem;
+  box-sizing: border-box;
 }
 
 /* Buttons */
@@ -237,10 +270,11 @@ button:hover, .btn:hover {
 }
 
 /* Lists inside cards */
-.dashboard-card ul {
+.dashboard-card ul.scroll-5 {
   list-style: none;
   padding: 0;
   margin: 0.5rem 0 0 0;
+  margin-bottom: 0.75;
 }
 .dashboard-card li {
   padding: 0.5rem 0;
@@ -249,6 +283,8 @@ button:hover, .btn:hover {
 .dashboard-card li:last-child {
   border-bottom: none;
 }
+
+
 
 /* Timestamp style */
 .timestamp {
@@ -274,9 +310,8 @@ button:hover, .btn:hover {
   left: 50%;
   width: 80%;
   height: 80%;
-  background: url("/static/img/mhd.png") no-repeat center center;
   background-size: contain;
-  opacity: 0.05; /* adjust transparency */
+  opacity: 0.02; /* adjust transparency */
   transform: translate(-50%, -50%);
   pointer-events: none; /* watermark won’t block clicks */
 }
@@ -319,3 +354,15 @@ button:hover, .btn:hover {
 }
 .alert.success { background: #e6f6ec; color: #1d7a3d; border: 1px solid #bde5c8; }
 .alert.danger  { background: #fdecea; color: #b02a37; border: 1px solid #f5c2c7; }
+
+.scroll-5 {
+  max-height: 10.5rem;   /* ~5 items @ ~2.1rem each */
+  overflow-y: auto;
+  padding-right: .25rem; /* keep scrollbar off text */
+  margin-bottom: 1.0rem;
+}
+
+/* optional: nicer thin scrollbar on webkit */
+.scroll-5::-webkit-scrollbar { width: 8px; }
+.scroll-5::-webkit-scrollbar-thumb { background: #d6d9df; border-radius: 6px; }
+.scroll-5::-webkit-scrollbar-thumb:hover { background: #c2c6cf; }

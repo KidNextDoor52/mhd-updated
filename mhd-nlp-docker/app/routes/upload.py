@@ -12,6 +12,7 @@ from app.auth import get_current_user, get_current_user_optional
 from app.utils.logger import log_activity
 from app.utils.ocr import extract_text_from_pdf_or_ocr, ocr_image_path
 
+
 router = APIRouter(prefix="/upload", tags=["upload"])
 templates = Jinja2Templates(directory="app/templates")
 
@@ -38,7 +39,7 @@ def _norm(s: Optional[str]) -> str:
     return (s or "").strip()
 
 def _key(s: Optional[str]) -> str:
-    return (s or "").strip().lower().replace(" ", "_").replace("-", "_")
+    return re.sub(r"[^a-z0-9]+", "", (s or "").lower())
 
 def _safe_int(s: Optional[str]) -> Optional[int]:
     try:
@@ -60,6 +61,49 @@ def _guess_bool(s: Optional[str]) -> Optional[bool]:
         return False
     return None
 
+_num_re = re.compile(r"-?\d+(?:\.\d+)?")
+
+def _safe_float_loose(s: Optional[str]) -> Optional[float]:
+    """
+    Extracts the first number from a string like '225 lbs' or '4.57s'.
+    Returns None if no number is found.
+    """
+    if s is None:
+        return None
+    m = _num_re.search(str(s))
+    return float(m.group()) if m else None
+
+_feet_inches_re = re.compile(
+    r"^\s*(\d+)\s*(?:'|ft|feet)\s*(\d+)?\s*(?:\"|in|inch|inches)?\s*$",
+    re.I
+)
+
+def _parse_inches(s: Optional[str]) -> Optional[float]:
+    """
+    Parses 9' 10", 9ft 10in, 5'11", etc. Falls back to _safe_float_loose.
+    Returns total inches as a float.
+    """
+    if s is None:
+        return None
+    st = str(s).strip()
+    m = _feet_inches_re.match(st)
+    if m:
+        feet = int(m.group(1))
+        inches = int(m.group(2) or 0)
+        return feet * 12 + inches
+    # If it's like "118 in" or "30", just pull the first number
+    return _safe_float_loose(st)
+
+_PLACEHOLDER_RE = re.compile(r"^\s*(\{\{.*\}\}|\[\[.*\]\]|<.*>|n/?a|n\.a\.|none|null|-+)\s*$", re.I)
+
+def _clean_text(v: str | None) -> str | None:
+    if v is None:
+        return None
+    s = _norm(str(v))
+    # 🔧 use .match(), not call the pattern
+    if not s or _PLACEHOLDER_RE.match(s):
+        return None
+    return s
 
 # ----------------- file helpers -----------------
 def _ext(filename: str) -> str:
@@ -111,17 +155,47 @@ def validate_shared_download(file_meta: dict, token: Optional[str], email: Optio
         if not any(c in allowed_categories for c in file_cats):
             raise HTTPException(status_code=403, detail="File not in shared categories")
 
-def _read_csv_bytes(file_bytes: bytes, encoding_try=("utf-8", "latin-1")) -> list[dict]:
+def _read_csv_bytes(file_bytes: bytes, encoding_try=("utf-8-sig", "utf-8", "latin-1")) -> list[dict]:
+    text = None
+    last_err = None
     for enc in encoding_try:
         try:
             text = file_bytes.decode(enc)
-            reader = csv.DictReader(io.StringIO(text))
-            if reader.fieldnames is None:
-                continue
-            return [dict(r) for r in reader]
-        except Exception:
-            continue
-    raise ValueError("Could not parse CSV with common encodings (utf-8, latin-1).")
+            break
+        except Exception as e:
+            last_err = e
+    if text is None:
+        raise ValueError(f"Could not decode CSV: {last_err}")
+
+    # Try to sniff delimiter; fallback to comma
+    try:
+        sample = text[:4096]
+        sniffer = csv.Sniffer()
+        dialect = sniffer.sniff(sample)
+        delimiter = dialect.delimiter
+    except Exception:
+        delimiter = ","
+
+    # Normalize headers: strip BOM/spaces
+    sio = io.StringIO(text)
+    reader = csv.reader(sio, delimiter=delimiter)
+    try:
+        raw_headers = next(reader)
+    except StopIteration:
+        return []
+
+    headers = [h.replace("\ufeff", "").strip() if h else "" for h in raw_headers]
+
+    rows: list[dict] = []
+    for row in reader:
+        # Pad shorter rows
+        if len(row) < len(headers):
+            row += [""] * (len(headers) - len(row))
+        rec = {headers[i]: row[i] for i in range(len(headers))}
+        rows.append(rec)
+
+    return rows
+    
 
 def csv_header_warnings(rows: list[dict], categories: set[str]) -> List[str]:
     """Soft header checks → return warnings (do not block upload)."""
@@ -150,45 +224,130 @@ def csv_header_warnings(rows: list[dict], categories: set[str]) -> List[str]:
 
 # ----------------- CSV ingestors -----------------
 def ingest_medical_csv(username: str, rows: list[dict]) -> dict:
-    scalar_map = {
-        "name": {"aliases": ["name", "full_name", "athlete_name"]},
-        "dob": {"aliases": ["dob", "date_of_birth"]},
-        "allergies": {"aliases": ["allergies"]},
-        "blood_type": {"aliases": ["blood_type", "blood"]},
-        "height": {"aliases": ["height", "height_in", "height_inches"]},
-        "weight": {"aliases": ["weight", "weight_lb", "weight_lbs"]},
-        "injury_history": {"aliases": ["injury_history", "injuries"]},
-        "cleared": {"aliases": ["cleared", "medically_cleared", "cleared_for_play"]},
+    def pick_from_row(row: dict, aliases: list[str]) -> Optional[str]:
+        for a in aliases:
+            ka = _key(a)
+            for col in row.keys():
+                kc = _key(col)
+                if kc == ka or ka in kc:
+                    val = row[col]
+                    if _norm(val) != "":
+                        return val
+        return None
+
+    def pick_from_map(kv: dict, aliases: list[str]) -> Optional[str]:
+        for a in aliases:
+            ka = _key(a)
+            # exact match first
+            if ka in kv and _norm(kv[ka]) != "":
+                return kv[ka]
+            # fuzzy: alias contained in key name
+            for k in kv.keys():
+                if ka in k and _norm(kv[k]) != "":
+                    return kv[k]
+        return None
+
+    if not rows:
+        log_activity(username, "ingest_medical_csv_empty", {"reason": "no_rows"})
+        return {"updated_fields": []}
+
+    # Detect KV shape like headers ["field","value"] (or similar)
+    headers = [h for h in rows[0].keys()]
+    is_kv = len(headers) == 2 and _key(headers[0]) in {"field","key","name"} and _key(headers[1]) in {"value","val"}
+
+    # Build a normalized key->value map if KV
+    kv_map: dict[str,str] = {}
+    if is_kv:
+        for r in rows:
+            k = _key(r.get(headers[0]))
+            v = r.get(headers[1])
+            if k is not None and _norm(k) != "":
+                kv_map[k] = str(v) if v is not None else ""
+        log_activity(username, "ingest_medical_csv_detected_kv", {"keys": sorted(list(kv_map.keys()))})
+    else:
+        log_activity(username, "ingest_medical_csv_headers", {"headers": sorted(headers)})
+
+    # Aliases we’ll accept
+    aliases = {
+        "name": ["name", "full_name", "athlete_name", "first_last", "athlete"],
+        "first": ["first_name", "first"],
+        "last": ["last_name", "last"],
+        "dob": ["dob", "date_of_birth", "birthdate"],
+        "allergies": ["allergies", "allergy"],
+        "blood_type": ["blood_type", "blood"],
+        "height_in": ["height_in", "height_inches", "height (in)", "height_(in)", "height"],
+        "weight_lb": ["weight_lb", "weight_lbs", "weight (lbs)", "weight_(lbs)", "weight"],
+        "injury_history": ["injury_history", "injuries", "injury_notes", "injury_note"],
+        "cleared": ["cleared", "medically_cleared", "cleared_for_play", "cleared_to_play", "clearance"],
     }
+
     final_doc = {
         "username": username,
         "updated_at": _utcnow(),
-        "raw_rows": rows,
+        "raw_rows": rows,  # keep for audit/debug
     }
 
-    def find_val(row: dict, aliases: list[str]) -> Optional[str]:
-        for a in aliases:
-            k = _key(a)
-            for col in row.keys():
-                if _key(col) == k or k in _key(col):
-                    return row[col]
+    def grab(field: str) -> Optional[str]:
+        als = aliases[field]
+        if is_kv:
+            return pick_from_map(kv_map, als)
+        # wide rows: check each row until we find a value
+        for r in rows:
+            v = pick_from_row(r, als)
+            if v is not None:
+                return v
         return None
 
-    for row in rows:
-        for field, spec in scalar_map.items():
-            val = find_val(row, spec["aliases"])
-            if val is not None and _norm(val) != "":
-                if field == "height":
-                    final_doc["height_in"] = _safe_float(val)
-                elif field == "weight":
-                    final_doc["weight_lb"] = _safe_float(val)
-                elif field == "cleared":
-                    final_doc["cleared"] = _guess_bool(val)
-                else:
-                    final_doc[field] = val
+    # Name (supports single "name" or first/last)
+    name = grab("name")
+    if not name:
+        first = grab("first")
+        last = grab("last")
+        name = " ".join(filter(None, [_norm(first) if first else None, _norm(last) if last else None])).strip()
+    if name:
+        final_doc["name"] = name
 
-    medical_history.update_one({"username": username}, {"$set": final_doc}, upsert=True)
-    return {"updated_fields": list(final_doc.keys())}
+    dob = grab("dob")
+    if dob:
+        final_doc["dob"] = _norm(dob)
+
+    allergies = grab("allergies")
+    if allergies:
+        final_doc["allergies"] = _norm(allergies)
+
+    blood = grab("blood_type")
+    if blood:
+        final_doc["blood_type"] = _norm(blood)
+
+    height = grab("height_in")
+    if height:
+        try:
+            final_doc["height_in"] = float(str(height).split()[0])
+        except Exception:
+            pass
+
+    weight = grab("weight_lb")
+    if weight:
+        try:
+            final_doc["weight_lb"] = float(str(weight).split()[0])
+        except Exception:
+            pass
+
+    injury = grab("injury_history")
+    if injury:
+        final_doc["injury_history"] = _norm(injury)
+
+    cleared = _clean_text(grab("cleared"))
+    if cleared:
+        v = cleared.lower()
+        if v in {"yes","y","true","t","1"}: final_doc["cleared"] = True
+        elif v in {"no","n","false","f","0"}: final_doc["cleared"] = False
+
+    to_set = {k: v for k, v in final_doc.items() if v is not None}
+    medical_history.update_one({"username": username}, {"$set": to_set}, upsert=True)
+    log_activity(username, "ingest_medical_csv_result", {"set_keys": sorted(to_set.keys())})
+    return {"updated_fields": list(to_set.keys())}
+
 
 def ingest_equipment_csv(username: str, rows: list[dict]) -> dict:
     items = []
@@ -213,39 +372,59 @@ def ingest_equipment_csv(username: str, rows: list[dict]) -> dict:
 def ingest_performance_csv(username: str, rows: list[dict]) -> dict:
     wr_doc = weightroom_col.find_one({"username": username}) or {"username": username}
     updated = {}
+
     metric_aliases = {
-        "bench": ["bench", "bench_press", "bench_lb", "bench_lbs"],
-        "squat": ["squat", "back_squat", "squat_lb", "squat_lbs"],
-        "deadlift": ["deadlift", "dead_lift", "deadlift_lb", "deadlift_lbs"],
-        "power_clean": ["power_clean", "clean", "pc", "powerclean"],
-        "vertical": ["vertical", "vertical_jump", "vert", "vertical_in", "vertical_inches"],
-        "forty_dash": ["forty", "forty_time", "40yd", "40_yard", "40", "40_time", "40-yard", "40-yard_dash"],
-        "shuttle": ["shuttle", "pro_agility", "shuttle_time", "5-10-5"],
-        "broad_jump": ["broad_jump", "standing_broad", "broad", "broad_inches"],
+        "bench":        ["bench", "bench_press", "bench_lb", "bench_lbs"],
+        "squat":        ["squat", "back_squat", "squat_lb", "squat_lbs"],
+        "deadlift":     ["deadlift", "dead_lift", "deadlift_lb", "deadlift_lbs"],
+        "power_clean":  ["power_clean", "clean", "pc", "powerclean"],
+        "vertical":     ["vertical", "vertical_jump", "vert", "vertical_in", "vertical_inches"],
+        "forty_dash":   ["forty", "forty_time", "40yd", "40_yard", "40", "40_time", "40-yard", "40-yard_dash"],
+        "shuttle":      ["shuttle", "pro_agility", "shuttle_time", "5-10-5"],
+        "broad_jump":   ["broad_jump", "standing_broad", "broad", "broad_inches"],
     }
-    def find_metric(row: dict, aliases: list[str]) -> Optional[float]:
+
+    def find_metric(row: dict, metric: str, aliases: list[str]) -> Optional[float]:
         for a in aliases:
             k = _key(a)
             for col in row.keys():
                 if _key(col) == k or k in _key(col):
-                    return _safe_float(row[col])
+                    raw = row[col]
+                    # vertical & broad_jump often recorded as feet/inches
+                    if metric in {"vertical", "broad_jump"}:
+                        return _parse_inches(raw)
+                    # times/weights can include units (s, lbs, etc.)
+                    return _safe_float_loose(raw)
         return None
 
     for row in rows:
         for metric, aliases in metric_aliases.items():
-            val = find_metric(row, aliases)
+            val = find_metric(row, metric, aliases)
             if val is not None:
                 wr_doc[metric] = val
                 updated[metric] = val
+
+        # Optional: training log notes in the same CSV
         inj = row.get("injury") or row.get("injury_note") or row.get("injury_status")
         det = row.get("details") or row.get("note") or row.get("notes")
         if _norm(inj) or _norm(det):
-            training_col.insert_one({"username": username, "injury": _norm(inj), "details": _norm(det), "created_at": _utcnow()})
-            log_activity(user_id=username, action="add_training_log", metadata={"injury": _norm(inj), "details": _norm(det)})
+            training_col.insert_one({
+                "username": username,
+                "injury": _norm(inj),
+                "details": _norm(det),
+                "created_at": _utcnow()
+            })
+            log_activity(
+                user_id=username,
+                action="add_training_log",
+                metadata={"injury": _norm(inj), "details": _norm(det)}
+            )
 
     wr_doc["updated_at"] = _utcnow()
     weightroom_col.update_one({"username": username}, {"$set": wr_doc}, upsert=True)
+    log_activity(username, "ingest_performance_csv_result", {"updated": sorted(updated.keys())})
     return {"weightroom_updated": list(updated.keys())}
+
 
 
 # ----------------- OCR text parsing (best-effort) -----------------
