@@ -5,6 +5,7 @@ from . import settings
 client = MongoClient(settings.MONGO_URI)
 db = client[settings.MONGO_DB]
 
+
 #Database Collections
 athletes = db["athletes"]
 documents = db["documents"]
@@ -23,3 +24,15 @@ uplaod_flags = db["upload_flags"]
 weightroom = db["weightroom"]
 
 activity_logs = db["activity_logs"]
+
+#additions
+connections = db.connections
+metrics_daily = db.metrics_daily
+workouts = db.workouts
+fhir_raw = db.fhir_raw
+clinical_snapshot = db.clinical_snapshot
+risk_flags = db.risk_flags
+forms = db.forms
+form_answers = db.form_answers
+events = db.events
+audit_trail = db.audit_trail

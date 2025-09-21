@@ -11,6 +11,7 @@ from app.db import db
 from app.auth import get_current_user, get_current_user_optional 
 from app.utils.logger import log_activity
 from app.utils.ocr import extract_text_from_pdf_or_ocr, ocr_image_path
+from app.services.sync import rebuild_clinical_snapshot, run_risk_rules
 
 
 router = APIRouter(prefix="/upload", tags=["upload"])
@@ -664,6 +665,21 @@ async def upload_record(
     except Exception as e:
         log_activity(username, "ingest_error", {"filename": filename, "error": str(e)})
         return RedirectResponse(f"/upload?err=Could not ingest: {str(e)}", status_code=303)
+    
+    try:
+        db.events.insert_one({
+            "user": username,
+            "type": "upload",
+            "date": _utcnow(),
+            "source": "web",
+            "summary": f"Uploaded {filename} ({', '.join(sorted(cat_set))})",
+            "tags": list(cat_set),
+        })
+        rebuild_clinical_snapshot(username)
+        run_risk_rules(username)
+    except Exception as _e:
+        # Non-fatal: never block the user’s upload if this housekeeping fails
+        log_activity(username, "post_ingest_housekeeping_error", {"err": str(_e)})
 
     # 5) Base upload activity
     log_activity(username, "upload_file", {"filename": filename, "category": list(cat_set)})

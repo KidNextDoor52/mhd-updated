@@ -7,8 +7,11 @@ import os
 from fastapi.exceptions import HTTPException
 
 from app.routes import auth, equipment, weightroom, upload, training, dashboard, auth_google, profile, share
+from app.routes import summary, forms, connect
+from app.db_init import ensure_indexes
 
 app = FastAPI()
+ensure_indexes()
 
 templates = Jinja2Templates(directory="app/templates")
 templates.env.auto_reload = True
@@ -29,6 +32,9 @@ app.include_router(dashboard.router)
 app.include_router(auth_google.router)
 app.include_router(profile.router)
 app.include_router(share.router)
+app.include_router(summary.router)
+app.include_router(forms.router)
+app.include_router(connect.router)
 
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 

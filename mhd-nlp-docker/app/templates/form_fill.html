@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}{{ form.title or form.slug }}{% endblock %}
+{% block content %}
+<div class="card">
+  <h3>{{ form.title or form.slug }}</h3>
+  <form method="post">
+    {% for field in form.schema.fields %}
+      <label>{{ field.label or field.name }}</label>
+      {% if field.type == "text" %}
+        <input name="{{ field.name }}" />
+      {% elif field.type == "number" %}
+        <input type="number" name="{{ field.name }}" />
+      {% elif field.type == "checkbox" %}
+        <input type="checkbox" name="{{ field.name }}" value="1" />
+      {% else %}
+        <input name="{{ field.name }}" />
+      {% endif %}
+    {% endfor %}
+    <button class="btn primary" type="submit">Submit</button>
+  </form>
+</div>
+{% endblock %}
