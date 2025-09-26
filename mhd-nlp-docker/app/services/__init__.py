@@ -1,1 +1,1 @@
-from . import auth, equipment, weightroom, upload, training, dashboard 
+__all__ = []

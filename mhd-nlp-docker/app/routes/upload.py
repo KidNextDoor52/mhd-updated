@@ -12,6 +12,7 @@ from app.auth import get_current_user, get_current_user_optional
 from app.utils.logger import log_activity
 from app.utils.ocr import extract_text_from_pdf_or_ocr, ocr_image_path
 from app.services.sync import rebuild_clinical_snapshot, run_risk_rules
+from app.utils.snapshot import rebuild_snapshot
 
 
 router = APIRouter(prefix="/upload", tags=["upload"])

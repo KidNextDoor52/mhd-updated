@@ -28,3 +28,7 @@ def ensure_indexes():
     # snapshot & risk flags
     db.clinical_snapshot.create_index("user", unique=True)
     db.risk_flags.create_index([("user", 1), ("date", -1), ("severity", -1)])
+
+    db.weightroom.create_index("username", unique=True)
+    db.equipment.create_index("username", unique=True)
+    db.medical_history.create_index("username", unique=True)

@@ -1,8 +1,9 @@
 # app/routes/forms.py
-from fastapi import APIRouter, Request, Depends, Form
+from fastapi import APIRouter, Request, Depends
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from datetime import datetime, timezone
+
 from app.auth import get_current_user
 from app.db import db
 
@@ -13,9 +14,16 @@ UTC = timezone.utc
 @router.get("/", response_class=HTMLResponse)
 def list_forms(request: Request, current_user: dict = Depends(get_current_user)):
     forms = list(db.forms.find({}).sort("title", 1))
-    answers = list(db.form_answers.find({"user": current_user["username"]})
-                   .sort("submitted_at", -1).limit(20))
-    return templates.TemplateResponse("forms.html", {"request": request, "forms": forms, "answers": answers})
+    answers = list(
+        db.form_answers
+          .find({"user": current_user["username"]})
+          .sort("submitted_at", -1)
+          .limit(20)
+    )
+    return templates.TemplateResponse(
+        "forms.html",
+        {"request": request, "forms": forms, "answers": answers}
+    )
 
 @router.get("/{slug}", response_class=HTMLResponse)
 def fill_form(slug: str, request: Request, current_user: dict = Depends(get_current_user)):
@@ -25,20 +33,24 @@ def fill_form(slug: str, request: Request, current_user: dict = Depends(get_curr
     return templates.TemplateResponse("form_fill.html", {"request": request, "form": form})
 
 @router.post("/{slug}")
-def submit_form(slug: str,
-                request: Request,
-                current_user: dict = Depends(get_current_user)):
+async def submit_form(
+    slug: str,
+    request: Request,
+    current_user: dict = Depends(get_current_user),
+):
     form = db.forms.find_one({"slug": slug})
     if not form:
         return RedirectResponse("/forms?err=missing", status_code=303)
 
-    # naive: slurp POST body → save
-    data = dict((await request.form()).items()) if hasattr(request, "form") else {}
+    # await is valid because this is async def
+    formdata = await request.form()
+    data = dict(formdata.items())
+
     db.form_answers.insert_one({
         "user": current_user["username"],
         "form_slug": slug,
         "answers": data,
-        "submitted_at": datetime.now(UTC)
+        "submitted_at": datetime.now(UTC),
     })
     db.events.insert_one({
         "user": current_user["username"],

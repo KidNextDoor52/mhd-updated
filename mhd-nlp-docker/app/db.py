@@ -36,3 +36,4 @@ forms = db.forms
 form_answers = db.form_answers
 events = db.events
 audit_trail = db.audit_trail
+education = db.education
