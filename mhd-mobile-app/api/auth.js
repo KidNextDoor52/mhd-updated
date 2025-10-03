@@ -1,1 +1,0 @@
-// Auth helper functions (login, logout, token validation)
