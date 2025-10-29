@@ -1,0 +1,13 @@
+services:
+  mlflow:
+    depends_on:
+      azurite:
+        condition: service_started
+    environment:
+      AZURE_STORAGE_CONNECTION_STRING: DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://azurite:10000/devstoreaccount1;
+    command: >
+      mlflow server
+      --host 0.0.0.0
+      --port 5000
+      --backend-store-uri $MLFLOW_BACKEND_STORE_URI
+      --artifacts-destination wasbs://mhd-mlflow-artifacts@devstoreaccount1.blob.core.windows.net

@@ -2,33 +2,81 @@ version: "3.9"
 
 services:
   backend:
-    build: .        # /app
-    ports:
-      - "8000:8000"
+    build: .
+    ports: ["8000:8000"]
     volumes:
-      - .:/app                 # mount full code including templates
-      - ./uploads:/app/uploads # persist uploads locally
+      - .:/app
+      - ./uploads:/app/uploads
     command: >
-      uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+      uvicorn app.main:app --host 0.0.0.0 --port 8000
     environment:
       - PYTHONUNBUFFERED=1
       - MONGO_URI=mongodb://mongo:27017
       - MONGO_DB=mhd_dev
+
+      # choose backend for YOUR uploads/pipelines
+      - STORAGE_BACKEND=azure           # <- switch to "s3" if you prefer
+
+      # ---- Azure Blob (Azurite) ----
+      - AZURE_BLOB_CONN_STR=DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://azurite:10000/devstoreaccount1;
+      - AZURE_CONTAINER_RAW=mhd-raw
+      - AZURE_CONTAINER_PROCESSED=mhd-processed
+
+      # ---- S3/MinIO (optional) ----
+      - S3_ENDPOINT=http://minio:9000
+      - MINIO_ROOT_USER=admin
+      - MINIO_ROOT_PASSWORD=adminadmin
+      - S3_ACCESS_KEY=admin
+      - S3_SECRET_KEY=adminadmin
+      - S3_BUCKET_RAW=mhd-raw
+      - S3_BUCKET_PROCESSED=mhd-processed
+
+      # ---- MLflow (tracking server) ----
+      - MLFLOW_TRACKING_URI=http://mlflow:5000
+
+      # Snowflake (disabled by default)
+      - SNOWFLAKE_ENABLED=false
     env_file:
       - ./app/.env.dev
     depends_on:
       mongo:
         condition: service_healthy
+      minio:
+        condition: service_started
+      azurite:
+        condition: service_started
+      mlflow:
+        condition: service_started
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://localhost:8000/health"]
       interval: 30s
       timeout: 5s
       retries: 5
 
+  worker:
+    build: .
+    command: python -m app.pipelines.orchestrator
+    env_file:
+      - ./app/.env.dev
+    environment:
+      - PYTHONUNBUFFERED=1
+      - MLFLOW_TRACKING_URI=http://mlflow:5000
+      - STORAGE_BACKEND=${STORAGE_BACKEND:-azure}
+      - S3_ENDPOINT=http://minio:9000
+      - S3_ACCESS_KEY=admin
+      - S3_SECRET_KEY=adminadmin
+      - AZURE_BLOB_CONN_STR=DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://azurite:10000/devstoreaccount1;
+    depends_on:
+      mlflow:
+        condition: service_started
+      minio:
+        condition: service_started
+      azurite:
+        condition: service_started
+
   mongo:
     image: mongo:5
-    ports:
-      - "27017:27017"
+    ports: ["27017:27017"]
     volumes:
       - mongo_data:/data/db
     healthcheck:
@@ -37,5 +85,83 @@ services:
       timeout: 10s
       retries: 5
 
+  mongo-express:
+    image: mongo-express:1.0.2-20
+    depends_on:
+      mongo:
+        condition: service_healthy
+    environment:
+      ME_CONFIG_MONGODB_SERVER: mongo
+      ME_CONFIG_BASICAUTH_USERNAME: admin
+      ME_CONFIG_BASICAUTH_PASSWORD: admin
+    ports: ["8081:8081"]
+
+  minio:
+    image: minio/minio:latest
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-admin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-adminadmin}
+    ports: ["9000:9000", "9001:9001"]
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/ready"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  azurite:
+    image: mcr.microsoft.com/azure-storage/azurite
+    command: azurite --blobHost 0.0.0.0 --queueHost 0.0.0.0 --tableHost 0.0.0.0
+    ports: ["10000:10000", "10001:10001", "10002:10002"]
+    volumes:
+      - azurite_data:/data
+
+  mlflow-db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: mlflow
+      POSTGRES_PASSWORD: mlflow
+      POSTGRES_DB: mlflow
+    ports: ["5433:5432"]
+    volumes:
+      - mlflow_db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mlflow -d mlflow"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # MLflow (default: artifacts on S3/MinIO)
+  mlflow:
+    image: ghcr.io/mlflow/mlflow:v2.16.0
+    depends_on:
+      mlflow-db:
+        condition: service_healthy
+      minio:
+        condition: service_started
+    environment:
+      MLFLOW_BACKEND_STORE_URI: postgresql+psycopg2://mlflow:mlflow@mlflow-db:5432/mlflow
+      MLFLOW_S3_ENDPOINT_URL: http://minio:9000
+      AWS_ACCESS_KEY_ID: ${MINIO_ROOT_USER:-admin}
+      AWS_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:-adminadmin}
+      MLFLOW_ARTIFACT_ROOT: s3://mhd-mlflow-artifacts
+    command: >
+      mlflow server
+      --host 0.0.0.0
+      --port 5000
+      --backend-store-uri $MLFLOW_BACKEND_STORE_URI
+      --artifacts-destination $MLFLOW_ARTIFACT_ROOT
+    ports: ["5000:5000"]
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:5000"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
 volumes:
   mongo_data:
+  minio_data:
+  mlflow_db:
+  azurite_data:

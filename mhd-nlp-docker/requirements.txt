@@ -21,3 +21,14 @@ PyPDF2==3.0.1
 pydantic>=1.10
 python-dateutil
 cryptography
+motor
+minio
+boto3
+azure-storage-blob
+snowflake-connector-python
+mlflow==2.16.0
+scikit-learn
+pandas
+numpy
+sqlalchemy
+python-multipart

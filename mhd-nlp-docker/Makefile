@@ -1,11 +1,16 @@
-# Run development server with auto-reload
-dev:
-	docker-compose -f docker-compose.dev.yml up --build
+dev:        ## hybrid dev (artifacts → S3/MinIO)
+\tdocker compose -f docker-compose.dev.yml up -d --build
 
-# Run production server
-prod:
-	docker-compose -f docker-compose.prod.yml up --build -d
+dev-azure-mlflow: ## hybrid dev + artifacts on Azure Blob
+\tdocker compose -f docker-compose.dev.yml -f docker-compose.azure-mlflow.yml up -d --build
 
-# Stop all containers
-stop:
-	docker-compose -f docker-compose.dev.yml down
+aws:
+\tdocker compose -f docker-compose.aws.yml up -d --build
+
+azure:
+\tdocker compose -f docker-compose.azure.yml up -d --build
+
+down:
+\tdocker compose -f docker-compose.dev.yml down -v || true
+\tdocker compose -f docker-compose.aws.yml down -v || true
+\tdocker compose -f docker-compose.azure.yml down -v || true
