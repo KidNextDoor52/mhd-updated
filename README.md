@@ -13,3 +13,17 @@ This platform is a production-ready, cloud-native ecosystem designed to give ind
 * **Compute:** Azure Kubernetes Service (AKS)
 * **Data Tier:** Snowflake (Governed Analytics), Azure SQL, Cosmos DB
 * **Secrets:** Azure Key Vault for certificate rotation and secret management
+
+## 🚀 How to Deploy (Containerized Workflow)
+
+### 1. Prerequisites
+* **Azure CLI & Kubectl:** Configured for the target subscription.
+* **Secret Management:** Ensure `az keyvault` contains the necessary OIDC provider client secrets.
+
+### 2. Environment Configuration
+Create a `.env` file from the provided template to configure the FHIR validation endpoint and Snowflake analytics sink.
+
+### 3. Local Validation (Docker Compose)
+Verify the microservices mesh locally before pushing to the cloud:
+```bash
+docker-compose up --build
