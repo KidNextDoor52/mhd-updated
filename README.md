@@ -25,7 +25,7 @@ Create a `.env` file from the provided template to configure the FHIR validation
 
 ### 3. Local Validation (Docker Compose)
 Verify the microservices mesh locally before pushing to the cloud:
-```bash
+```bash.
 docker-compose up --build
 
 ### 4. AKS Cluster Deployment
