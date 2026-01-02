@@ -27,3 +27,10 @@ Create a `.env` file from the provided template to configure the FHIR validation
 Verify the microservices mesh locally before pushing to the cloud:
 ```bash
 docker-compose up --build
+
+### 4. AKS Cluster Deployment
+Deploy the validated images to the Azure Kubernetes Service (AKS) private cluster using Helm:
+
+Bash
+
+helm install mhd-platform ./charts/mhd-platform --set tenantId=$AZURE_TENANT_ID
