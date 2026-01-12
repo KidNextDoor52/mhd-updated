@@ -37,6 +37,7 @@ from app.routes.pipeline_async import router as pipeline_async_router
 from app.routes.models import router as models_router
 
 from app.monitoring.middleware import APIMetricsMiddleware
+from app.middleware.auth_context import ClaimsMiddleware
 
 from app.db.storage import storage_startup, ensure_buckets
 
@@ -88,6 +89,7 @@ app.include_router(assistant.router)
 
 
 app.add_middleware(APIMetricsMiddleware)
+app.add_middleware(ClaimsMiddleware)
 
 static_dir = "app/static"
 if os.path.isdir(static_dir):

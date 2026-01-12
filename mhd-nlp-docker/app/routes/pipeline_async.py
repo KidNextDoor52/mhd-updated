@@ -1,40 +1,47 @@
-from fastapi import APIRouter, BackgroundTasks, Depends
-from rq.job import Job
-from redis import Redis
+# app/routes/pipeline_async.py
+from fastapi import APIRouter, Depends, HTTPException, Request
 import os
+import uuid
 
-from app.jobs.queue import q, train_job
-from app.audit import log_event
 from app.auth import get_current_user
 from app.authz import require_role
+from app.audit import write_audit_event
 
 router = APIRouter(prefix="/pipeline", tags=["pipeline"])
 
 
 @router.post("/train-async", dependencies=[Depends(require_role("trainer"))])
-async def train_async(user=Depends(get_current_user)):
-    job = q.enqueue(train_job)
-    log_event(
-        user.get("username"),
-        "train_async_enqueued",
-        {"job_id": job.id},
+async def train_async(request: Request, user=Depends(get_current_user)):
+    """
+    Placeholder async training enqueue.
+    If/when you wire RQ or Azure Service Bus, replace this.
+    """
+    job_id = str(uuid.uuid4())
+
+    write_audit_event(
+        tenant_id=user.get("org_id"),
+        user_id=user.get("username") or user.get("_id"),
+        action="train_async_enqueued",
+        resource_type="pipeline_job",
+        resource_id=job_id,
+        request=request,
     )
-    return {"job_id": job.id, "status": "queued"}
+
+    return {"job_id": job_id, "status": "queued"}
 
 
 @router.get("/status/{job_id}", dependencies=[Depends(require_role("trainer"))])
-async def status(job_id: str, user=Depends(get_current_user)):
-    r = Redis.from_url(os.getenv("REDIS_URL", "redis://redis:6379"))
-    job = Job.fetch(job_id, connection=r)
-    info = {"job_id": job.id, "status": job.get_status()}
-    if job.is_finished:
-        info["result"] = job.result
-    if job.is_failed:
-        info["exc_info"] = job.exc_info
-
-    log_event(
-        user.get("username"),
-        "train_async_status",
-        {"job_id": job.id, "status": info["status"]},
+async def status(job_id: str, request: Request, user=Depends(get_current_user)):
+    """
+    Placeholder status endpoint.
+    """
+    write_audit_event(
+        tenant_id=user.get("org_id"),
+        user_id=user.get("username") or user.get("_id"),
+        action="train_async_status_checked",
+        resource_type="pipeline_job",
+        resource_id=job_id,
+        request=request,
     )
-    return info
+
+    return {"job_id": job_id, "status": "unknown (placeholder)"}

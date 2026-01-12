@@ -1,15 +1,15 @@
 from datetime import datetime, timezone
-import pandas as pd
+from collections import defaultdict
 
+import pandas as pd
 from fastapi import APIRouter, Request, Depends
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
 from app.auth import get_current_user
 from app.authz import require_role
+from app.audit import write_audit_event
 from app.db import db
-
-from collections import defaultdict
 
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
 templates = Jinja2Templates(directory="app/templates")
@@ -44,13 +44,22 @@ law_signatures = db["law_signatures"]
 @router.get(
     "/trainer",
     response_class=HTMLResponse,
-    dependencies=[Depends(require_role("trainer"))],
+    dependencies=[Depends(require_role("trainer", "admin"))],
 )
 async def trainer_dashboard_legacy(request: Request, user=Depends(get_current_user)):
     """
     Legacy trainer route: kept for backwards compatibility.
     New trainer view lives at /trainer/dashboard via app/routes/trainer_dashboard.py.
     """
+    write_audit_event(
+        tenant_id=user.get("org_id"),
+        user_id=user.get("username") or user.get("_id"),
+        action="trainer_dashboard_legacy_viewed",
+        resource_type="dashboard",
+        resource_id="trainer_legacy",
+        request=request,
+    )
+
     return templates.TemplateResponse(
         "trainer_dashboard.html",
         {
@@ -62,9 +71,12 @@ async def trainer_dashboard_legacy(request: Request, user=Depends(get_current_us
 
 @router.get(
     "/trainer/top_risk",
-    dependencies=[Depends(require_role("trainer"))],
+    dependencies=[Depends(require_role("trainer", "admin"))],
 )
-async def top_risk(limit: int = 20):
+async def top_risk(request: Request, limit: int = 20, user=Depends(get_current_user)):
+    # NOTE: In demo mode, this reads global risk table.
+    # If you add org scoping later, filter by org_id here.
+
     rows = list(risk.find().sort("ts", -1).limit(2000))
     if not rows:
         return []
@@ -72,6 +84,15 @@ async def top_risk(limit: int = 20):
     df = pd.DataFrame(rows)
     latest = df.sort_values(["athlete_id", "ts"]).groupby("athlete_id").tail(1)
     top = latest.sort_values("score", ascending=False).head(limit)
+
+    write_audit_event(
+        tenant_id=user.get("org_id"),
+        user_id=user.get("username") or user.get("_id"),
+        action="trainer_top_risk_viewed",
+        resource_type="risk_predictions",
+        extra={"limit": limit, "returned": int(top.shape[0])},
+        request=request,
+    )
 
     return [
         {
@@ -86,10 +107,20 @@ async def top_risk(limit: int = 20):
 
 @router.get(
     "/trainer/metrics",
-    dependencies=[Depends(require_role("trainer"))],
+    dependencies=[Depends(require_role("trainer", "admin"))],
 )
-async def trainer_metrics():
+async def trainer_metrics(request: Request, user=Depends(get_current_user)):
     rows = list(metrics_coll.find().sort("day", -1).limit(14))
+
+    write_audit_event(
+        tenant_id=user.get("org_id"),
+        user_id=user.get("username") or user.get("_id"),
+        action="trainer_metrics_viewed",
+        resource_type="model_daily_metrics",
+        extra={"returned": len(rows)},
+        request=request,
+    )
+
     return [
         {
             "day": r["day"],
@@ -152,33 +183,64 @@ def dashboard(request: Request, current_user: dict = Depends(get_current_user)):
 
     Dispatch rules:
       - trainer/admin -> redirect to /trainer/dashboard
-      - vertical == oil_gas   -> dashboard_oil_gas.html
-      - vertical == financial -> dashboard_financial.html
-      - vertical == law       -> dashboard_law.html
+      - vertical == oil_gas   -> dashboard_oil_gas.html (requires org_id)
+      - vertical == financial -> dashboard_financial.html (requires org_id)
+      - vertical == law       -> dashboard_law.html (requires org_id)
       - otherwise             -> athlete / health_sports dashboard.html
     """
     username = current_user["username"]
-    role = current_user.get("role")
-    vertical = current_user.get("vertical")
+    role = (current_user.get("role") or "user").lower()
+    vertical = (current_user.get("vertical") or "").lower()
     org_id = current_user.get("org_id")
+
+    # audit: dashboard entry
+    write_audit_event(
+        tenant_id=org_id,
+        user_id=current_user.get("username") or current_user.get("_id"),
+        action="dashboard_entry",
+        resource_type="dashboard",
+        extra={"role": role, "vertical": vertical},
+        request=request,
+    )
 
     # 1) Trainer/admin → dedicated trainer command center
     if role in ("trainer", "admin"):
         return RedirectResponse("/trainer/dashboard", status_code=307)
 
-    # 2) Oil & Gas org view
+    # 2) Org dashboards REQUIRE org_id
+    if vertical in ("oil_gas", "financial", "law") and not org_id:
+        # intentionally do not leak org dashboards without org membership
+        return templates.TemplateResponse(
+            "dashboard.html",
+            {
+                "request": request,
+                "user": current_user,
+                "doc_count": 0,
+                "recent_docs": [],
+                "grouped_docs": {"medical": [], "performance": [], "equipment": []},
+                "medical": {},
+                "equipment": {"items": []},
+                "training_logs": [],
+                "training_count": 0,
+                "weightroom": {},
+                "activity": [],
+                "error_banner": "Your account is marked as an org user but has no org_id. Access blocked.",
+            },
+        )
+
+    # 3) Oil & Gas org view
     if vertical == "oil_gas":
         return _render_oil_gas_dashboard(request, current_user, org_id)
 
-    # 3) Financial org view
+    # 4) Financial org view
     if vertical == "financial":
         return _render_financial_dashboard(request, current_user, org_id)
 
-    # 4) Law org view
+    # 5) Law org view
     if vertical == "law":
         return _render_law_dashboard(request, current_user, org_id)
 
-    # 5) Default: athlete / health_sports view (existing logic)
+    # 6) Default: athlete / health_sports view (existing logic)
     docs = list(
         uploads_col.find({"username": username})
         .sort("upload_date", -1)
@@ -218,6 +280,14 @@ def dashboard(request: Request, current_user: dict = Depends(get_current_user)):
     for log in activity:
         log["friendly_time"] = humanize_time(log.get("timestamp"))
 
+    write_audit_event(
+        tenant_id=org_id,
+        user_id=current_user.get("username") or current_user.get("_id"),
+        action="athlete_dashboard_viewed",
+        resource_type="dashboard",
+        request=request,
+    )
+
     return templates.TemplateResponse(
         "dashboard.html",
         {
@@ -251,9 +321,7 @@ def _render_oil_gas_dashboard(request: Request, user: dict, org_id: str | None):
     )
 
     now = datetime.now(timezone.utc)
-    permits_docs = list(
-        oil_permits.find({"demo": True, **org_filter}).limit(50)
-    )
+    permits_docs = list(oil_permits.find({"demo": True, **org_filter}).limit(50))
     permits_30d = 0
     permits_60d = 0
     permits_upcoming = []
@@ -271,15 +339,21 @@ def _render_oil_gas_dashboard(request: Request, user: dict, org_id: str | None):
         if days >= 0:
             permits_upcoming.append(p)
 
-    trainings_docs = list(
-        oil_trainings.find({"demo": True, **org_filter}).limit(100)
-    )
+    trainings_docs = list(oil_trainings.find({"demo": True, **org_filter}).limit(100))
     trainings_on_time = sum(1 for t in trainings_docs if t.get("status") == "on_time")
     trainings_overdue = sum(1 for t in trainings_docs if t.get("status") == "overdue")
 
-    # Simple placeholder “trend” (replace with real logic later)
     risk_direction = "Stable"
     risk_delta = 0.0
+
+    write_audit_event(
+        tenant_id=org_id,
+        user_id=user.get("username") or user.get("_id"),
+        action="oil_dashboard_viewed",
+        resource_type="dashboard",
+        extra={"incidents_total": incidents_total},
+        request=request,
+    )
 
     return templates.TemplateResponse(
         "dashboard_oil_gas.html",
@@ -311,28 +385,20 @@ def _render_financial_dashboard(request: Request, user: dict, org_id: str | None
     clients_active = sum(1 for c in clients if c.get("status") == "active")
     clients_onboarding = sum(1 for c in clients if c.get("status") == "onboarding")
 
-    alerts = list(
-        fin_alerts.find({"demo": True, **org_filter}).sort("ts", -1).limit(100)
-    )
+    alerts = list(fin_alerts.find({"demo": True, **org_filter}).sort("ts", -1).limit(100))
     accounts_high_risk = len(alerts)
     accounts_under_review = sum(1 for a in alerts if a.get("status") == "review")
 
-    # ---- build simple alerts-by-day series for sparkline ----
     alerts_by_day_map: dict[str, int] = defaultdict(int)
     for a in alerts:
         ts = a.get("ts")
         if isinstance(ts, datetime):
             day_str = ts.date().isoformat()
         else:
-            # assume ISO string
             day_str = str(ts)[:10]
         alerts_by_day_map[day_str] += 1
 
-    # sort by day ascending
-    alerts_by_day = [
-        {"day": day, "count": alerts_by_day_map[day]}
-        for day in sorted(alerts_by_day_map.keys())
-    ]
+    alerts_by_day = [{"day": day, "count": alerts_by_day_map[day]} for day in sorted(alerts_by_day_map.keys())]
 
     kyc_docs = list(fin_kyc.find({"demo": True, **org_filter}).limit(100))
     kyc_pending = sum(1 for k in kyc_docs if k.get("status") == "pending")
@@ -341,9 +407,14 @@ def _render_financial_dashboard(request: Request, user: dict, org_id: str | None
     alerts_direction = "Stable"
     alerts_delta = 0.0
 
-    high_risk_accounts = alerts
-    kyc_queue = kyc_docs
-    recent_activity = []  # later: map from audit logs
+    write_audit_event(
+        tenant_id=org_id,
+        user_id=user.get("username") or user.get("_id"),
+        action="financial_dashboard_viewed",
+        resource_type="dashboard",
+        extra={"accounts_high_risk": accounts_high_risk},
+        request=request,
+    )
 
     return templates.TemplateResponse(
         "dashboard_financial.html",
@@ -358,14 +429,12 @@ def _render_financial_dashboard(request: Request, user: dict, org_id: str | None
             "accounts_under_review": accounts_under_review,
             "alerts_direction": alerts_direction,
             "alerts_delta": alerts_delta,
-            "high_risk_accounts": high_risk_accounts,
-            "kyc_queue": kyc_queue,
-            "recent_activity": recent_activity,
-            # chart series
+            "high_risk_accounts": alerts,
+            "kyc_queue": kyc_docs,
+            "recent_activity": [],  # later: map from audit logs
             "alerts_by_day": alerts_by_day,
         },
     )
-
 
 
 # ================= LAW / LEGAL DASHBOARD RENDERER =================
@@ -373,9 +442,7 @@ def _render_financial_dashboard(request: Request, user: dict, org_id: str | None
 def _render_law_dashboard(request: Request, user: dict, org_id: str | None):
     org_filter = {"org_id": org_id} if org_id else {}
 
-    matters = list(
-        law_matters.find({"demo": True, **org_filter}).limit(200)
-    )
+    matters = list(law_matters.find({"demo": True, **org_filter}).limit(200))
     matters_open = sum(1 for m in matters if m.get("status") == "open")
 
     now = datetime.now(timezone.utc)
@@ -389,9 +456,7 @@ def _render_law_dashboard(request: Request, user: dict, org_id: str | None):
         if (now - opened_dt).days <= 30:
             matters_new_month += 1
 
-    deadlines = list(
-        law_deadlines.find({"demo": True, **org_filter}).limit(200)
-    )
+    deadlines = list(law_deadlines.find({"demo": True, **org_filter}).limit(200))
     deadlines_7d = 0
     deadlines_14d = 0
     upcoming_deadlines = []
@@ -409,14 +474,21 @@ def _render_law_dashboard(request: Request, user: dict, org_id: str | None):
         if days >= 0:
             upcoming_deadlines.append(d)
 
-    sigs = list(
-        law_signatures.find({"demo": True, **org_filter}).limit(200)
-    )
+    sigs = list(law_signatures.find({"demo": True, **org_filter}).limit(200))
     signatures_pending = sum(1 for s in sigs if s.get("status") == "pending")
     signatures_overdue = sum(1 for s in sigs if s.get("status") == "overdue")
 
     workload_direction = "Stable"
     workload_delta = 0.0
+
+    write_audit_event(
+        tenant_id=org_id,
+        user_id=user.get("username") or user.get("_id"),
+        action="law_dashboard_viewed",
+        resource_type="dashboard",
+        extra={"matters_open": matters_open},
+        request=request,
+    )
 
     return templates.TemplateResponse(
         "dashboard_law.html",
