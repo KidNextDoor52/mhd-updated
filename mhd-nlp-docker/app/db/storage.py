@@ -145,19 +145,17 @@ def put_processed(key: str, data: bytes, content_type: Optional[str] = None):
 
 
 def get_bytes_raw(key: str) -> bytes:
-    """
-    Fetch raw bytes from the RAW storage container/bucket.
-    This is what pipeline_ingest imports.
-    """
     if BACKEND == "s3":
         return _s3_get(S3_BUCKET_RAW, key)
     return _azure_get(AZURE_CONTAINER_RAW, key)
 
 
 def get_bytes_processed(key: str) -> bytes:
-    """
-    Fetch bytes from the PROCESSED storage container/bucket.
-    """
     if BACKEND == "s3":
         return _s3_get(S3_BUCKET_PROCESSED, key)
     return _azure_get(AZURE_CONTAINER_PROCESSED, key)
+
+
+# backwards compatibility
+def get_bytes(key: str) -> bytes:
+    return get_bytes_raw(key)
