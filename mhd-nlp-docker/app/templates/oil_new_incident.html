@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}Log New Incident{% endblock %}
+
+{% block content %}
+<div class="dashboard-container fade-in">
+  <header class="hero">
+    <h2 class="dashboard-title">
+      <img src="/static/img/mhd3.png" class="dashboard-logo" alt="MHD">
+      Log New Incident
+    </h2>
+    <p class="tagline">
+      Capture basic details for an operations or safety incident.
+    </p>
+  </header>
+
+  <div class="card form">
+    <form method="post" action="/org/oil/incidents/new">
+      <div class="form-group">
+        <label for="site">Site / Location</label>
+        <input id="site" name="site" type="text" required>
+      </div>
+      <div class="form-group">
+        <label for="type">Type</label>
+        <input id="type" name="type" type="text" placeholder="Spill, TRIR, near miss…">
+      </div>
+      <div class="form-group">
+        <label for="severity">Severity</label>
+        <select id="severity" name="severity">
+          <option value="low">Low</option>
+          <option value="medium">Medium</option>
+          <option value="high">High</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="status">Status</label>
+        <select id="status" name="status">
+          <option value="open">Open</option>
+          <option value="investigating">Investigating</option>
+          <option value="closed">Closed</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="description">Description</label>
+        <textarea id="description" name="description" rows="4"></textarea>
+      </div>
+      <button type="submit" class="btn primary">Save Incident</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

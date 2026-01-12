@@ -1,6 +1,4 @@
-from app import create_app
+# Keep this file only if something references it.
+# For FastAPI + Uvicorn, you typically run: uvicorn app.main:app
 
-app = create_app()
-
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=True)
+from app.main import app  # FastAPI app

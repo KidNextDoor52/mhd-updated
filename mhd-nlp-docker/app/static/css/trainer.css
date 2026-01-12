@@ -1,0 +1,354 @@
+/* ----- Core brand palette (reuse MHD colors) ----- */
+:root {
+  --mhd-bg: #f4f7fb;
+  --mhd-surface: #ffffff;
+  --mhd-surface-soft: #f9fbff;
+  --mhd-border-subtle: #e2e8f0;
+  --mhd-primary: #0b1b3b;   /* navy */
+  --mhd-accent: #2ecc71;    /* green */
+  --mhd-danger: #e74c3c;
+  --mhd-text-main: #1f2933;
+  --mhd-text-muted: #6b7280;
+}
+
+/* Scope styles to trainer dashboard so we don't mess with other pages */
+.trainer-dashboard {
+  max-width: 1180px;
+  margin: 0 auto 3rem;
+  padding: 1.5rem 1.25rem 3rem;
+  background: transparent;
+}
+
+body.trainer-body {
+  /* optional: if you add class="trainer-body" to <body> in base_trainer.html */
+  font-family: "Segoe UI", Roboto, system-ui, -apple-system, BlinkMacSystemFont,
+    "Helvetica Neue", Arial, sans-serif;
+  background: var(--mhd-bg) url("/static/img/mhd.png") no-repeat center 20%;
+  background-size: 45%;
+  background-blend-mode: lighten;
+  color: var(--mhd-text-main);
+}
+
+/* Fade in */
+.fade-in {
+  animation: fadeIn 0.6s ease-out;
+}
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Header */
+.trainer-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.trainer-header h2 {
+  margin: 0;
+  font-size: 1.6rem;
+  color: var(--mhd-primary);
+}
+
+.trainer-subtitle {
+  margin: 0.3rem 0 0;
+  font-size: 0.95rem;
+  color: var(--mhd-text-muted);
+}
+
+/* Quick actions row */
+.quick-actions-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-bottom: 1.3rem;
+}
+
+.qa-btn {
+  border-radius: 999px;
+  border: 1px solid var(--mhd-border-subtle);
+  background: var(--mhd-surface);
+  color: var(--mhd-primary);
+  font-size: 0.9rem;
+  font-weight: 500;
+  padding: 0.45rem 1.2rem;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.06);
+  transition: background 0.15s ease, transform 0.1s ease,
+              box-shadow 0.15s ease;
+}
+
+.qa-btn.primary {
+  background: var(--mhd-primary);
+  color: #ffffff;
+  border-color: var(--mhd-primary);
+}
+
+.qa-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(15, 23, 42, 0.10);
+}
+
+.qa-btn.primary:hover {
+  background: #122345;
+}
+
+/* Metric grid (top cards like analytic dashboards) */
+.metric-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1.25rem;
+  margin-bottom: 1.8rem;
+}
+
+.metric-card {
+  background: var(--mhd-surface);
+  border-radius: 14px;
+  padding: 1rem 1.2rem 1.1rem;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.06);
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.metric-header {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 0.5rem;
+}
+
+.metric-header h3 {
+  margin: 0;
+  font-size: 0.98rem;
+  font-weight: 600;
+  color: var(--mhd-text-main);
+}
+
+.metric-caption {
+  margin: 0.2rem 0 0;
+  font-size: 0.8rem;
+  color: var(--mhd-text-muted);
+}
+
+.metric-icon {
+  width: 2.1rem;
+  height: 2.1rem;
+  border-radius: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #e0f2fe;
+  font-size: 1.1rem;
+}
+
+.metric-icon.alert {
+  background: #fef3c7;
+}
+
+.metric-icon.danger {
+  background: #fee2e2;
+}
+
+.metric-body {
+  margin-top: 0.25rem;
+}
+
+.metric-cols {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+.metric-label {
+  font-size: 0.78rem;
+  color: var(--mhd-text-muted);
+  margin: 0 0 0.2rem;
+}
+
+.metric-value {
+  margin: 0;
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: var(--mhd-primary);
+}
+
+/* risk bar “chart” */
+.risk-chart {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-top: 0.2rem;
+}
+
+.risk-bar {
+  padding: 0.25rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  color: #ffffff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.risk-bar.high { background: var(--mhd-danger); }
+.risk-bar.med  { background: #f39c12; }
+.risk-bar.low  { background: #27ae60; }
+
+/* Needs clearance pills */
+.pill-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.pill-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.4rem 0;
+  border-bottom: 1px solid #edf2f7;
+}
+
+.pill-row:last-child {
+  border-bottom: none;
+}
+
+.pill-title {
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.pill-sub {
+  font-size: 0.8rem;
+  color: var(--mhd-text-muted);
+}
+
+.pill-btn {
+  border-radius: 999px;
+  border: none;
+  background: var(--mhd-accent);
+  color: #ffffff;
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 0.25rem 0.9rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.pill-btn:hover {
+  background: #26b864;
+}
+
+.pill-empty {
+  font-size: 0.85rem;
+  color: var(--mhd-text-muted);
+}
+
+/* Panel grid (lower tables) */
+.panel-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 1.25rem;
+}
+
+.panel-card {
+  background: var(--mhd-surface);
+  border-radius: 14px;
+  padding: 1rem 1.2rem 1.1rem;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.06);
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  display: flex;
+  flex-direction: column;
+  min-height: 220px;
+}
+
+.panel-card.full-width {
+  grid-column: 1 / -1;
+}
+
+.panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.6rem;
+}
+
+.panel-header h3 {
+  margin: 0;
+  font-size: 0.98rem;
+  font-weight: 600;
+  color: var(--mhd-text-main);
+}
+
+.panel-body {
+  flex: 1;
+}
+
+/* Tables */
+.table-wrap {
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.86rem;
+}
+
+.table th,
+.table td {
+  padding: 0.45rem 0.5rem;
+  border-bottom: 1px solid #edf2f7;
+  text-align: left;
+}
+
+.table th {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--mhd-text-muted);
+  background: #f9fafb;
+}
+
+.table tr:last-child td {
+  border-bottom: none;
+}
+
+/* Model status row */
+.model-body {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+}
+
+.model-body > div {
+  min-width: 120px;
+}
+
+/* Small helpers */
+.inline-form {
+  margin: 0;
+}
+
+/* Responsive tweaks */
+@media (max-width: 768px) {
+  .trainer-dashboard {
+    padding: 1rem 0.75rem 2.5rem;
+  }
+
+  .metric-cols {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .panel-card {
+    min-height: auto;
+  }
+}

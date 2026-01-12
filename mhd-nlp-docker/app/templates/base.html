@@ -18,17 +18,30 @@
   <header class="main-header">
     <div class="logo-container">
       <img src="/static/img/mhd.png" alt="MHD Logo" class="logo">
-      <h1><span>My Health Data</span></h1>
+      <h1><span>Modern Health Dashboard</span></h1>
     </div>
     <nav>
-      <a href="/" >Home</a>
-      <a href="javascript:navToProtected('/dashboard')">Dashboard</a>
+      <a href="/">Home</a>
+
+      {% if user and user.role in ["trainer", "admin"] %}
+        <!-- Trainers: main dashboard goes to trainer view -->
+        <a href="/trainer/dashboard">Dashboard</a>
+      {% else %}
+        <!-- Athletes: main dashboard -->
+        <a href="javascript:navToProtected('/dashboard')">Dashboard</a>
+      {% endif %}
+
       <a href="javascript:navToProtected('/equipment/')">Equipment</a>
       <a href="javascript:navToProtected('/weightroom/')">Weightroom</a>
       <a href="javascript:navToProtected('/training/')">Training Room</a>
       <a href="javascript:navToProtected('/upload/')">Upload</a>
       <a href="javascript:navToProtected('/profile')">Profile</a>
-      
+
+      {% if user and user.role in ["trainer", "admin"] %}
+        <!-- Optional: keep a second link if you want -->
+        <a href="/trainer/dashboard">Trainer Dashboard</a>
+      {% endif %}
+
       <a href="javascript:logout()">Logout</a>
     </nav>
   </header>
@@ -62,7 +75,12 @@
   </main>
 
   <footer class="main-footer">
-    <p>&copy; 2025 My Health Data. All rights reserved.</p>
+    <p>&copy; 2025 Modern Health Dashboard. All rights reserved.</p>
   </footer>
+
+
+   <!-- === Charts & Global Dashboard JS === -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="/static/js/mhd_charts.js"></script>
 </body>
 </html>

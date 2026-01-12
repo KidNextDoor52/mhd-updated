@@ -1,0 +1,336 @@
+{% extends "base_org.html" %}
+{% block title %}Legal Operations Command Center{% endblock %}
+
+{% block content %}
+<div class="trainer-dashboard org-dashboard fade-in">
+
+  <header class="hero">
+    <h2 class="dashboard-title">
+      <img src="/static/img/mhd3.png" alt="MHD" class="dashboard-logo" />
+      Legal Operations Command Center
+    </h2>
+    <p class="tagline">
+      Matters, deadlines, and signatures across {{ user.org_id or "your firm" }}.
+    </p>
+  </header>
+
+  <div class="quick-actions-row">
+  <button class="qa-btn primary" onclick="location.href='/org/law/matters/new'">
+    ➕ Open New Matter
+  </button>
+  <button class="qa-btn" onclick="lawScrollToDeadlines()">
+    ⏰ View Upcoming Deadlines
+  </button>
+  <button class="qa-btn" onclick="location.href='/org/law/docket'">
+    📄 Export Docket
+  </button>
+</div>
+
+<script>
+  function lawScrollToDeadlines() {
+    const el = document.querySelector('[data-panel=\"law-deadlines\"]');
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth' });
+    } else {
+      // fallback to old selector if you didn't add data-panel
+      const alt = document.querySelector('.panel-card:nth-of-type(2)');
+      if (alt) alt.scrollIntoView({ behavior: 'smooth' });
+    }
+  }
+</script>
+
+
+  <!-- Metric tiles -->
+  <div class="metric-grid">
+    <section class="metric-card" id="matters">
+      <header class="metric-header">
+        <span class="metric-icon">📁</span>
+        <div>
+          <h3>Matters</h3>
+          <p class="metric-caption">Active &amp; new this month.</p>
+        </div>
+      </header>
+      <div class="metric-body metric-cols">
+        <div>
+          <p class="metric-label">Open matters</p>
+          <p class="metric-value">{{ matters_open or 0 }}</p>
+        </div>
+        <div>
+          <p class="metric-label">New this month</p>
+          <p class="metric-value">{{ matters_new_month or 0 }}</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="metric-card" id="deadlines">
+      <header class="metric-header">
+        <span class="metric-icon danger">⏰</span>
+        <div>
+          <h3>Deadlines</h3>
+          <p class="metric-caption">Within 14 days.</p>
+        </div>
+      </header>
+      <div class="metric-body metric-cols">
+        <div>
+          <p class="metric-label">Due 7d</p>
+          <p class="metric-value">{{ deadlines_7d or 0 }}</p>
+        </div>
+        <div>
+          <p class="metric-label">Due 14d</p>
+          <p class="metric-value">{{ deadlines_14d or 0 }}</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="metric-card" id="docs">
+      <header class="metric-header">
+        <span class="metric-icon">✍️</span>
+        <div>
+          <h3>Signatures</h3>
+          <p class="metric-caption">Docs awaiting client or counterparty.</p>
+        </div>
+      </header>
+      <div class="metric-body metric-cols">
+        <div>
+          <p class="metric-label">Pending</p>
+          <p class="metric-value">{{ signatures_pending or 0 }}</p>
+        </div>
+        <div>
+          <p class="metric-label">Overdue</p>
+          <p class="metric-value">{{ signatures_overdue or 0 }}</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="metric-card" id="reports">
+      <header class="metric-header">
+        <span class="metric-icon">📈</span>
+        <div>
+          <h3>Workload Trend</h3>
+          <p class="metric-caption">Open matters vs last month.</p>
+        </div>
+      </header>
+      <div class="metric-body metric-cols">
+        <div>
+          <p class="metric-label">Direction</p>
+          <p class="metric-value">{{ workload_direction or "Stable" }}</p>
+        </div>
+        <div>
+          <p class="metric-label">Δ matters</p>
+          <p class="metric-value">{{ workload_delta if workload_delta is defined else 0 }}</p>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- Panels -->
+  <div class="panel-grid">
+
+    <section class="panel-card full-width">
+      <header class="panel-header">
+        <h3>Workload Overview</h3>
+      </header>
+      <div class="panel-body">
+        <div id="law-chart-data"
+             data-matters-open="{{ matters_open or 0 }}"
+             data-matters-new-month="{{ matters_new_month or 0 }}"
+             data-deadlines-7d="{{ deadlines_7d or 0 }}"
+             data-deadlines-14d="{{ deadlines_14d or 0 }}"
+             data-signatures-pending="{{ signatures_pending or 0 }}"
+             data-signatures-overdue="{{ signatures_overdue or 0 }}">
+        </div>
+        <div style="height: 220px;">
+          <canvas id="lawWorkloadChart"></canvas>
+        </div>
+      </div>
+    </section>
+
+
+    <section class="panel-card">
+      <header class="panel-header">
+        <h3>Open Matters</h3>
+      </header>
+      <div class="panel-body table-wrap">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Matter</th>
+              <th>Client</th>
+              <th>Owner</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+          {% for m in open_matters or [] %}
+            <tr>
+              <td>{{ m.name or "—" }}</td>
+              <td>{{ m.client or "—" }}</td>
+              <td>{{ m.owner or "—" }}</td>
+              <td>{{ m.status or "open" }}</td>
+            </tr>
+          {% else %}
+            <tr><td colspan="4">No open matters.</td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel-card" data-panel="law-deadlines">
+      <header class="panel-header">
+        <h3>Upcoming Deadlines</h3>
+      </header>
+      <div class="panel-body table-wrap">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Deadline</th>
+              <th>Matter</th>
+              <th>Owner</th>
+              <th>Due</th>
+            </tr>
+          </thead>
+          <tbody>
+          {% for d in upcoming_deadlines or [] %}
+            <tr>
+              <td>{{ d.name or "—" }}</td>
+              <td>{{ d.matter_name or "—" }}</td>
+              <td>{{ d.owner or "—" }}</td>
+              <td>{{ d.due_at or "—" }}</td>
+            </tr>
+          {% else %}
+            <tr><td colspan="4">No upcoming deadlines.</td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel-card full-width">
+      <header class="panel-header">
+        <h3>Docs Awaiting Signature</h3>
+      </header>
+      <div class="panel-body table-wrap">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Document</th>
+              <th>Matter</th>
+              <th>Signer</th>
+              <th>Status</th>
+              <th>Sent</th>
+            </tr>
+          </thead>
+          <tbody>
+          {% for s in signature_queue or [] %}
+            <tr>
+              <td>{{ s.doc_name or "—" }}</td>
+              <td>{{ s.matter_name or "—" }}</td>
+              <td>{{ s.signer or "—" }}</td>
+              <td>{{ s.status or "pending" }}</td>
+              <td>{{ s.sent_at or "—" }}</td>
+            </tr>
+          {% else %}
+            <tr><td colspan="5">No documents awaiting signature.</td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+</div>
+
+<script>
+  // Buttons
+  function lawNewMatter() {
+    window.location.href = "/org/law/matters/new";
+  }
+
+  function lawUpcomingDeadlines() {
+    lawScrollToDeadlines();
+  }
+
+  function lawExportDocket() {
+    window.location.href = "/org/law/docket";
+  }
+
+  function lawScrollToDeadlines() {
+    const el = document.querySelector('[data-panel="law-deadlines"]')
+              || document.querySelector('.panel-card:nth-of-type(2)');
+    if (el) el.scrollIntoView({ behavior: "smooth" });
+  }
+
+  // Chart
+  document.addEventListener("DOMContentLoaded", () => {
+    if (!window.Chart) return;
+
+    const dataEl = document.getElementById("law-chart-data");
+    const canvas = document.getElementById("lawWorkloadChart");
+    if (!dataEl || !canvas) return;
+
+    const mattersOpen = Number(dataEl.dataset.mattersOpen || 0);
+    const mattersNew  = Number(dataEl.dataset.mattersNewMonth || 0);
+    const deadlines7  = Number(dataEl.dataset.deadlines7d || 0);
+    const deadlines14 = Number(dataEl.dataset.deadlines14d || 0);
+    const sigPending  = Number(dataEl.dataset.signaturesPending || 0);
+    const sigOverdue  = Number(dataEl.dataset.signaturesOverdue || 0);
+
+    const values = [
+      mattersOpen,
+      mattersNew,
+      deadlines7,
+      deadlines14,
+      sigPending,
+      sigOverdue,
+    ];
+
+    const total = values.reduce((a, b) => a + b, 0);
+
+    // If everything is zero, show a friendly message instead of a blank chart
+    if (total === 0) {
+      const wrapper = canvas.parentElement;
+      wrapper.innerHTML =
+        '<p class="metric-caption" style="margin-top: 1rem;">No workload data yet for this org.</p>';
+      return;
+    }
+
+    const ctx = canvas.getContext("2d");
+
+    new Chart(ctx, {
+      type: "doughnut",
+      data: {
+        labels: [
+          "Open matters",
+          "New this month",
+          "Deadlines 7d",
+          "Deadlines 14d",
+          "Signatures pending",
+          "Signatures overdue"
+        ],
+        datasets: [{
+          data: values,
+          backgroundColor: [
+            "#0ea5e9",
+            "#22c55e",
+            "#f97316",
+            "#fde047",
+            "#6366f1",
+            "#ef4444"
+          ]
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            position: "right",
+            labels: { boxWidth: 14 }
+          }
+        },
+        cutout: "55%"
+      }
+    });
+  });
+</script>
+{% endblock %}

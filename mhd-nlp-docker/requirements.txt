@@ -4,7 +4,6 @@ python-dotenv
 python-jose
 PyMuPDF
 pdfminer.six
-PyMuPDF
 uvicorn[standard]
 fastapi
 spacy==3.7.5
@@ -31,4 +30,6 @@ scikit-learn
 pandas
 numpy
 sqlalchemy
-python-multipart
+redis==5.0.8
+rq==1.15.1
+en-core-web-sm==3.7.1

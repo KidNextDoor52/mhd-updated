@@ -2,11 +2,10 @@
 from fastapi import APIRouter, Depends, HTTPException, Form, Request, Response
 from fastapi.responses import RedirectResponse, JSONResponse
 from fastapi.security import OAuth2PasswordRequestForm
+from datetime import datetime, timezone
 from authlib.integrations.starlette_client import OAuth
 from starlette.config import Config
-from datetime import datetime, timezone
 import os, uuid
-from app.auth import revoke_token, decode_token, REFRESH_TOKEN_COOKIE
 
 from app.db import users, db
 from app.auth import (
@@ -14,17 +13,17 @@ from app.auth import (
     get_password_hash,
     create_access_token,
     create_refresh_token,
+    decode_token,
+    revoke_token,
     REFRESH_TOKEN_COOKIE,
 )
 from app.utils.logger import log_activity
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
-
-# --- OAuth Setup (Google) ---
+# --- Google OAuth setup ---
 config = Config(environ=os.environ)
 oauth = OAuth(config)
-
 oauth.register(
     name="google",
     client_id=config("GOOGLE_CLIENT_ID"),
@@ -38,8 +37,8 @@ oauth.register(
 def signup(username: str = Form(...), password: str = Form(...), email: str = Form(...)):
     email = email.strip().lower()
     username = username.strip()
-    
 
+    # NOTE: users is PyMongo, so NO await
     if users.find_one({"username": username}):
         raise HTTPException(status_code=409, detail="Username already exists")
 
@@ -49,7 +48,7 @@ def signup(username: str = Form(...), password: str = Form(...), email: str = Fo
 
     users.insert_one({
         "username": username,
-        "email": email,                # store normalized
+        "email": email,
         "password": get_password_hash(password),
         "role": "user",
         "created_at": datetime.now(timezone.utc),
@@ -61,17 +60,17 @@ def signup(username: str = Form(...), password: str = Form(...), email: str = Fo
 # ---------- Username/Password Login ----------
 @router.post("/token")
 def login(form_data: OAuth2PasswordRequestForm = Depends()):
+    # authenticate_user is sync
     user = authenticate_user(form_data.username, form_data.password)
     if not user:
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
-    sub = str(user["_id"])  # must be string for JWT
+    sub = str(user["_id"])
     access_token = create_access_token(sub)
     refresh_token = create_refresh_token(sub)
 
     log_activity(user_id=user["username"], action="login_password", metadata={})
 
-    # Return tokens in JSON for frontend, AND set cookies for auto-login
     resp = JSONResponse({
         "access_token": access_token,
         "token_type": "bearer",
@@ -80,16 +79,33 @@ def login(form_data: OAuth2PasswordRequestForm = Depends()):
     resp.set_cookie(
         key="token",
         value=access_token,
-        httponly=False,   # True in prod (set False if you want JS access)
-        samesite="lax"
+        httponly=False,   # True in prod if you don't need JS access
+        samesite="lax",
     )
     resp.set_cookie(
         key=REFRESH_TOKEN_COOKIE,
         value=refresh_token,
-        httponly=True,    # keep refresh token server-only
-        samesite="lax"
+        httponly=True,    # keep refresh token httpOnly
+        samesite="lax",
     )
     return resp
+
+# ---------- Logout ----------
+@router.post("/logout")
+def logout(request: Request):
+    rt = request.cookies.get(REFRESH_TOKEN_COOKIE)
+    if rt:
+        try:
+            p = decode_token(rt)
+            # revoke_token is sync now
+            revoke_token(p["jti"], p["sub"], p["exp"], reason="logout")
+        except Exception:
+            pass
+
+    response = JSONResponse({"message": "Logged out"})
+    response.delete_cookie("token")
+    response.delete_cookie(REFRESH_TOKEN_COOKIE)
+    return response
 
 # ---------- Google Login ----------
 @router.get("/google/login")
@@ -107,17 +123,18 @@ async def auth_via_google_callback(request: Request):
     email = user_info["email"].strip().lower()
     username = user_info.get("name", email.split("@")[0])
 
+    # PyMongo calls here are sync: no await
     user = users.find_one({"email": email})
     if not user:
-        user_doc = {
+        doc = {
             "username": username,
             "email": email,
             "provider": "google",
             "created_at": datetime.now(timezone.utc),
             "role": "user",
         }
-        users.insert_one(user_doc)
-        user = user_doc
+        users.insert_one(doc)
+        user = users.find_one({"email": email})
 
     log_activity(user_id=username, action="login_google", metadata={"email": email})
 
@@ -130,7 +147,7 @@ async def auth_via_google_callback(request: Request):
         key=REFRESH_TOKEN_COOKIE,
         value=refresh_token,
         httponly=True,
-        secure=False,  # toggle True in prod
+        secure=False,  # True in prod with HTTPS
         samesite="lax",
     )
     resp.set_cookie("token", access_token, httponly=False, samesite="lax")
@@ -144,13 +161,13 @@ def forgot_password(email: str = Form(...)):
         raise HTTPException(status_code=404, detail="Email not found")
 
     token = str(uuid.uuid4())
-    db.password_resets.insert_one({
+    db["password_resets"].insert_one({
         "email": email,
         "token": token,
-        "created_at": datetime.now(timezone.utc)
+        "created_at": datetime.now(timezone.utc),
     })
 
-    # TODO: actually send email in production
+    # TODO: send email in real system
     print(f"[DEBUG] Password reset token for {email}: {token}")
 
     return {"message": "Password reset requested. Check your email for reset instructions."}
@@ -158,32 +175,14 @@ def forgot_password(email: str = Form(...)):
 # ---------- Reset Password ----------
 @router.post("/reset-password")
 def reset_password(token: str = Form(...), new_password: str = Form(...)):
-    reset = db.password_resets.find_one({"token": token})
+    reset = db["password_resets"].find_one({"token": token})
     if not reset:
         raise HTTPException(status_code=400, detail="Invalid or expired reset token")
 
     users.update_one(
         {"email": reset["email"]},
-        {"$set": {"password": get_password_hash(new_password)}}
+        {"$set": {"password": get_password_hash(new_password)}},
     )
-    db.password_resets.delete_one({"_id": reset["_id"]})
+    db["password_resets"].delete_one({"_id": reset["_id"]})
 
     return {"message": "Password updated successfully"}
-
-#========== Loguot --------
-@router.post("/logout")
-def logout(request: Request, response: Response):
-    #revoke refresh token if present
-    rt = request.cookies.get(REFRESH_TOKEN_COOKIE)
-    if rt:
-        try:
-            p = decode_token(rt)
-            revoke_token(p["jti"], p["sub"], p["exp"], reason="logout")
-        except Exception:
-            pass
-
-    # clear cookies
-    response = JSONResponse({"message": "Logged Out"})
-    response.delete_cookie("token")
-    response.delete_cookie(REFRESH_TOKEN_COOKIE)
-    return response

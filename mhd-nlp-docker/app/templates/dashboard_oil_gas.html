@@ -1,0 +1,338 @@
+{% extends "base_org.html" %}
+{% block title %}Oil & Gas Command Center{% endblock %}
+
+{% block content %}
+<div class="trainer-dashboard org-dashboard fade-in">
+
+  <!-- Top title / context -->
+  <header class="hero">
+    <h2 class="dashboard-title">
+      <img src="/static/img/mhd3.png" alt="MHD" class="dashboard-logo" />
+      Oil &amp; Gas Operations Command Center
+    </h2>
+    <p class="tagline">
+      Incidents, permits, and safety training — in one view for {{ user.org_id or "your org" }}.
+    </p>
+  </header>
+
+  <div class="quick-actions-row">
+  <button class="qa-btn primary" onclick="location.href='/org/oil/incidents/new'">
+    ➕ Log New Incident
+  </button>
+  <button class="qa-btn" onclick="ogRunSafetyAudit()">
+    🧪 Run Safety Audit
+  </button>
+  <button class="qa-btn" onclick="location.href='/org/oil/report'">
+    📄 Export Compliance Report
+  </button>
+</div>
+
+<script>
+  async function ogRunSafetyAudit() {
+    try {
+      const res = await fetch('/org/oil/audit', { method: 'POST' });
+      const data = await res.json();
+      alert(data.message || 'Safety audit started.');
+    } catch (e) {
+      console.error(e);
+      alert('Failed to start safety audit.');
+    }
+  }
+</script>
+
+
+  <!-- Top metric tiles -->
+  <div class="metric-grid">
+    <section class="metric-card" id="incidents">
+      <header class="metric-header">
+        <span class="metric-icon danger">⚠️</span>
+        <div>
+          <h3>Incidents This Month</h3>
+          <p class="metric-caption">Field + facility incidents recorded in the last 30 days.</p>
+        </div>
+      </header>
+      <div class="metric-body metric-cols">
+        <div>
+          <p class="metric-label">Total</p>
+          <p class="metric-value">{{ incidents_total or 0 }}</p>
+        </div>
+        <div>
+          <p class="metric-label">High Severity</p>
+          <p class="metric-value">{{ incidents_high or 0 }}</p>
+        </div>
+        <div>
+          <p class="metric-label">Open</p>
+          <p class="metric-value">{{ incidents_open or 0 }}</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="metric-card" id="permits">
+      <header class="metric-header">
+        <span class="metric-icon">📜</span>
+        <div>
+          <h3>Permits &amp; Certifications</h3>
+          <p class="metric-caption">Expiring within the next 60 days.</p>
+        </div>
+      </header>
+      <div class="metric-body metric-cols">
+        <div>
+          <p class="metric-label">Expiring 30d</p>
+          <p class="metric-value">{{ permits_30d or 0 }}</p>
+        </div>
+        <div>
+          <p class="metric-label">Expiring 60d</p>
+          <p class="metric-value">{{ permits_60d or 0 }}</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="metric-card" id="training">
+      <header class="metric-header">
+        <span class="metric-icon">🧯</span>
+        <div>
+          <h3>Safety Training</h3>
+          <p class="metric-caption">Compliance across all staff.</p>
+        </div>
+      </header>
+      <div class="metric-body metric-cols">
+        <div>
+          <p class="metric-label">On-time</p>
+          <p class="metric-value">{{ trainings_on_time or 0 }}</p>
+        </div>
+        <div>
+          <p class="metric-label">Overdue</p>
+          <p class="metric-value">{{ trainings_overdue or 0 }}</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="metric-card" id="reports">
+      <header class="metric-header">
+        <span class="metric-icon">📈</span>
+        <div>
+          <h3>Risk Trend</h3>
+          <p class="metric-caption">Last 7 vs previous 7 days.</p>
+        </div>
+      </header>
+      <div class="metric-body metric-cols">
+        <div>
+          <p class="metric-label">Direction</p>
+          <p class="metric-value">{{ risk_direction or "Stable" }}</p>
+        </div>
+        <div>
+          <p class="metric-label">Δ score</p>
+          <p class="metric-value">{{ "%.2f"|format(risk_delta) if risk_delta is defined else "0.00" }}</p>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- Lower analytic panels -->
+  <div class="panel-grid">
+
+    <section class="panel-card full-width">
+      <header class="panel-header">
+        <h3>Incidents & Compliance Snapshot</h3>
+      </header>
+      <div class="panel-body">
+        <div id="oil-chart-data"
+             data-incidents-total="{{ incidents_total or 0 }}"
+             data-incidents-high="{{ incidents_high or 0 }}"
+             data-incidents-open="{{ incidents_open or 0 }}"
+             data-permits-30d="{{ permits_30d or 0 }}"
+             data-permits-60d="{{ permits_60d or 0 }}"
+             data-trainings-on-time="{{ trainings_on_time or 0 }}"
+             data-trainings-overdue="{{ trainings_overdue or 0 }}">
+        </div>
+        <div style="height: 220px;">
+          <canvas id="oilSnapshotChart"></canvas>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel-card">
+      <header class="panel-header">
+        <h3>Recent Incidents</h3>
+      </header>
+      <div class="panel-body table-wrap">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>When</th>
+              <th>Site</th>
+              <th>Type</th>
+              <th>Severity</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+          {% for inc in recent_incidents or [] %}
+            <tr>
+              <td>{{ inc.when or inc.ts }}</td>
+              <td>{{ inc.site or "—" }}</td>
+              <td>{{ inc.type or "—" }}</td>
+              <td>{{ inc.severity or "—" }}</td>
+              <td>{{ inc.status or "open" }}</td>
+            </tr>
+          {% else %}
+            <tr><td colspan="5">No incidents recorded yet.</td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel-card">
+      <header class="panel-header">
+        <h3>Permits Expiring Soon</h3>
+      </header>
+      <div class="panel-body table-wrap">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Permit</th>
+              <th>Location</th>
+              <th>Owner</th>
+              <th>Expires</th>
+            </tr>
+          </thead>
+          <tbody>
+          {% for p in permits_upcoming or [] %}
+            <tr>
+              <td>{{ p.name or "—" }}</td>
+              <td>{{ p.location or "—" }}</td>
+              <td>{{ p.owner or "—" }}</td>
+              <td>{{ p.expires_at or "—" }}</td>
+            </tr>
+          {% else %}
+            <tr><td colspan="4">No upcoming expirations.</td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel-card full-width">
+      <header class="panel-header">
+        <h3>Safety Training Status</h3>
+      </header>
+      <div class="panel-body table-wrap">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Employee</th>
+              <th>Role</th>
+              <th>Training</th>
+              <th>Status</th>
+              <th>Due</th>
+            </tr>
+          </thead>
+          <tbody>
+          {% for t in training_status or [] %}
+            <tr>
+              <td>{{ t.employee or "—" }}</td>
+              <td>{{ t.role or "—" }}</td>
+              <td>{{ t.name or "—" }}</td>
+              <td>{{ t.status or "—" }}</td>
+              <td>{{ t.due_at or "—" }}</td>
+            </tr>
+          {% else %}
+            <tr><td colspan="5">No training data yet.</td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+</div>
+
+<script>
+  // Buttons
+  function ogNewIncident() {
+    window.location.href = "/org/oil/incidents/new";
+  }
+
+  async function ogRunSafetyAudit() {
+    try {
+      const res = await fetch("/org/oil/audit", { method: "POST" });
+      const data = await res.json();
+      alert(data.message || "Safety audit started.");
+    } catch (err) {
+      console.error(err);
+      alert("Failed to start safety audit.");
+    }
+  }
+
+  function ogExportCompliance() {
+    window.location.href = "/org/oil/report";
+  }
+
+  // Chart
+  document.addEventListener("DOMContentLoaded", () => {
+    if (!window.Chart) return;
+    const dataEl = document.getElementById("oil-chart-data");
+    if (!dataEl) return;
+
+    const incidentsTotal = Number(dataEl.dataset.incidentsTotal || 0);
+    const incidentsHigh  = Number(dataEl.dataset.incidentsHigh || 0);
+    const incidentsOpen  = Number(dataEl.dataset.incidentsOpen || 0);
+    const permits30      = Number(dataEl.dataset.permits30d || 0);
+    const permits60      = Number(dataEl.dataset.permits60d || 0);
+    const trOnTime       = Number(dataEl.dataset.trainingsOnTime || 0);
+    const trOverdue      = Number(dataEl.dataset.trainingsOverdue || 0);
+
+    const ctx = document.getElementById("oilSnapshotChart").getContext("2d");
+
+    new Chart(ctx, {
+      type: "bar",
+      data: {
+        labels: [
+          "Incidents (total)",
+          "Incidents (high)",
+          "Incidents (open)",
+          "Permits 30d",
+          "Permits 60d",
+          "Training on-time",
+          "Training overdue"
+        ],
+        datasets: [{
+          label: "Count",
+          data: [
+            incidentsTotal,
+            incidentsHigh,
+            incidentsOpen,
+            permits30,
+            permits60,
+            trOnTime,
+            trOverdue
+          ],
+          backgroundColor: [
+            "#4b5563",
+            "#ef4444",
+            "#f97316",
+            "#22c55e",
+            "#a3e635",
+            "#0ea5e9",
+            "#facc15"
+          ],
+          borderRadius: 6
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: { mode: "index", intersect: false }
+        },
+        scales: {
+          x: { grid: { display: false } },
+          y: { beginAtZero: true, ticks: { precision: 0 } }
+        }
+      }
+    });
+  });
+</script>
+
+{% endblock %}

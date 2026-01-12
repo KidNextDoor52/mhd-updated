@@ -14,3 +14,6 @@ down:
 \tdocker compose -f docker-compose.dev.yml down -v || true
 \tdocker compose -f docker-compose.aws.yml down -v || true
 \tdocker compose -f docker-compose.azure.yml down -v || true
+
+seed:
+    docker compose -f docker-compose.dev.yml exec backend bash -c "PYTHONPATH=/app python scripts/seed_demo_data.py"

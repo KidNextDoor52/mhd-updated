@@ -160,6 +160,22 @@ services:
       timeout: 10s
       retries: 5
 
+  redis:
+    image: redis:7
+    ports: ["6379:6379"]
+
+  rq-worker:
+    build: .
+    command: ["python", "-m", "rq.cli", "worker", "--url", "redis://redis:6379", "mhd_jobs"]
+    depends_on:
+      - redis
+    environment:
+      - PYTHONUNBUFFERED=1
+      - REDIS_URL=redis://redis:6379
+      - MLFLOW_TRACKING_URI=http://mlflow:5000
+      - MONGO_URI=mongodb://mongo:27017
+      - MONGO_DB=mhd_dev
+
 volumes:
   mongo_data:
   minio_data:

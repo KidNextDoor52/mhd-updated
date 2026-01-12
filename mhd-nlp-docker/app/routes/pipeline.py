@@ -7,3 +7,4 @@ router = APIRouter(prefix="/pipeline", tags=["pipeline"])
 def trigger_training():
     jid = run_training_job()
     return {"status": "started", "job_id": jid}
+ 

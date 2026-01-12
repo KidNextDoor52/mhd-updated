@@ -15,7 +15,7 @@ def list_events(limit: int = 100, current_user: dict = Depends(get_current_user)
     evs = list(db.events.find({"user": user}).sort("date", -1).limit(limit))
     return {"events": evs}
 
-# create training room record (injury note, etc.)
+#  training room record 
 @router.post("/training")
 def add_training(
     injury: Optional[str] = Body(None),

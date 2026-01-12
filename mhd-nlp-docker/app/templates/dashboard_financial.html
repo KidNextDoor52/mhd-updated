@@ -1,0 +1,317 @@
+{% extends "base_org.html" %}
+{% block title %}Financial Compliance Command Center{% endblock %}
+
+{% block content %}
+<div class="trainer-dashboard org-dashboard fade-in">
+
+  <header class="hero">
+    <h2 class="dashboard-title">
+      <img src="/static/img/mhd3.png" alt="MHD" class="dashboard-logo" />
+      Financial Compliance Command Center
+    </h2>
+    <p class="tagline">
+      KYC, high-risk accounts, and document status for {{ user.org_id or "your org" }}.
+    </p>
+  </header>
+
+  <div class="quick-actions-row">
+    <button class="qa-btn primary" onclick="finNewClient()">
+      ➕ Add New Client
+    </button>
+    <button class="qa-btn" onclick="finRunKycBatch()">
+      🔍 Run KYC Batch Check
+    </button>
+    <button class="qa-btn" onclick="finExportReport()">
+      📄 Export Risk Report
+    </button>
+  </div>
+
+  <div class="metric-grid">
+  <section class="metric-card">
+    <header class="metric-header">
+      <span class="metric-icon">👥</span>
+      <div>
+        <h3>Client Portfolio</h3>
+        <p class="metric-caption">Active vs onboarding clients.</p>
+      </div>
+    </header>
+    <div class="metric-body metric-cols">
+      <div>
+        <p class="metric-label">Active clients</p>
+        <p class="metric-value">{{ clients_active or 0 }}</p>
+      </div>
+      <div>
+        <p class="metric-label">Onboarding</p>
+        <p class="metric-value">{{ clients_onboarding or 0 }}</p>
+      </div>
+    </div>
+    <div class="metric-chart">
+      <canvas id="finClientsDonut"></canvas>
+    </div>
+  </section>
+
+  <section class="metric-card">
+    <header class="metric-header">
+      <span class="metric-icon danger">📝</span>
+      <div>
+        <h3>KYC / AML</h3>
+        <p class="metric-caption">Pending and overdue checks.</p>
+      </div>
+    </header>
+    <div class="metric-body metric-cols">
+      <div>
+        <p class="metric-label">KYC pending</p>
+        <p class="metric-value">{{ kyc_pending or 0 }}</p>
+      </div>
+      <div>
+        <p class="metric-label">KYC overdue</p>
+        <p class="metric-value">{{ kyc_overdue or 0 }}</p>
+      </div>
+    </div>
+    <div class="metric-chart">
+      <canvas id="finKycDonut"></canvas>
+    </div>
+  </section>
+
+  <section class="metric-card">
+    <header class="metric-header">
+      <span class="metric-icon">🚨</span>
+      <div>
+        <h3>High-Risk Accounts</h3>
+        <p class="metric-caption">Flagged by rules/ML.</p>
+      </div>
+    </header>
+    <div class="metric-body metric-cols">
+      <div>
+        <p class="metric-label">High-risk</p>
+        <p class="metric-value">{{ accounts_high_risk or 0 }}</p>
+      </div>
+      <div>
+        <p class="metric-label">Under review</p>
+        <p class="metric-value">{{ accounts_under_review or 0 }}</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="metric-card">
+    <header class="metric-header">
+      <span class="metric-icon">📈</span>
+      <div>
+        <h3>Alerts Trend</h3>
+        <p class="metric-caption">Last 7 vs previous 7 days.</p>
+      </div>
+    </header>
+    <div class="metric-body metric-cols">
+      <div>
+        <p class="metric-label">Direction</p>
+        <p class="metric-value">{{ alerts_direction or "Stable" }}</p>
+      </div>
+      <div>
+        <p class="metric-label">Δ alerts</p>
+        <p class="metric-value">
+          {{ "%.1f"|format(alerts_delta) if alerts_delta is defined else "0.0" }}
+        </p>
+      </div>
+    </div>
+    <div class="metric-chart metric-chart--spark">
+      <canvas id="finAlertsSpark"></canvas>
+    </div>
+  </section>
+</div>
+
+  <!-- Panels -->
+  <div class="panel-grid">
+
+    <section class="panel-card full-width">
+      <header class="panel-header">
+        <h3>Portfolio Overview</h3>
+      </header>
+      <div class="panel-body">
+        <!-- data attributes so JS can read counts -->
+        <div id="fin-chart-data"
+             data-clients-active="{{ clients_active or 0 }}"
+             data-clients-onboarding="{{ clients_onboarding or 0 }}"
+             data-kyc-pending="{{ kyc_pending or 0 }}"
+             data-kyc-overdue="{{ kyc_overdue or 0 }}"
+             data-accounts-high-risk="{{ accounts_high_risk or 0 }}">
+        </div>
+        <div style="height: 220px;">
+          <canvas id="finPortfolioChart"></canvas>
+        </div>
+      </div>
+    </section>
+
+
+    <section class="panel-card">
+      <header class="panel-header">
+        <h3>High-Risk Accounts</h3>
+      </header>
+      <div class="panel-body table-wrap">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Account</th>
+              <th>Client</th>
+              <th>Score</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+          {% for a in high_risk_accounts or [] %}
+            <tr>
+              <td>{{ a.account_id or "—" }}</td>
+              <td>{{ a.client_name or "—" }}</td>
+              <td>{{ "%.2f"|format(a.score) if a.score is defined else "—" }}</td>
+              <td>{{ a.status or "review" }}</td>
+            </tr>
+          {% else %}
+            <tr><td colspan="4">No high-risk accounts currently flagged.</td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel-card">
+      <header class="panel-header">
+        <h3>KYC / AML Queue</h3>
+      </header>
+      <div class="panel-body table-wrap">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Client</th>
+              <th>Type</th>
+              <th>Status</th>
+              <th>Due</th>
+            </tr>
+          </thead>
+          <tbody>
+          {% for k in kyc_queue or [] %}
+            <tr>
+              <td>{{ k.client_name or "—" }}</td>
+              <td>{{ k.check_type or "KYC" }}</td>
+              <td>{{ k.status or "pending" }}</td>
+              <td>{{ k.due_at or "—" }}</td>
+            </tr>
+          {% else %}
+            <tr><td colspan="4">KYC queue is empty.</td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel-card full-width">
+      <header class="panel-header">
+        <h3>Recent Activity</h3>
+      </header>
+      <div class="panel-body table-wrap">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>When</th>
+              <th>User</th>
+              <th>Action</th>
+              <th>Target</th>
+            </tr>
+          </thead>
+          <tbody>
+          {% for ev in recent_activity or [] %}
+            <tr>
+              <td>{{ ev.when or ev.ts }}</td>
+              <td>{{ ev.user or "—" }}</td>
+              <td>{{ ev.action or "—" }}</td>
+              <td>{{ ev.target or "—" }}</td>
+            </tr>
+          {% else %}
+            <tr><td colspan="4">No recent activity.</td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+</div>
+
+<script>
+  // Buttons
+  function finNewClient() {
+    window.location.href = "/org/fin/clients/new";
+  }
+
+  async function finRunKycBatch() {
+    try {
+      const res = await fetch("/org/fin/kyc/batch", { method: "POST" });
+      const data = await res.json();
+      alert(data.message || "KYC batch started.");
+    } catch (err) {
+      console.error(err);
+      alert("Failed to start KYC batch.");
+    }
+  }
+
+  function finExportReport() {
+    window.location.href = "/org/fin/report";
+  }
+
+  // Chart
+  document.addEventListener("DOMContentLoaded", () => {
+    if (!window.Chart) return;
+
+    const dataEl = document.getElementById("fin-chart-data");
+    if (!dataEl) return;
+
+    const active = Number(dataEl.dataset.clientsActive || 0);
+    const onboarding = Number(dataEl.dataset.clientsOnboarding || 0);
+    const kycPending = Number(dataEl.dataset.kycPending || 0);
+    const kycOverdue = Number(dataEl.dataset.kycOverdue || 0);
+    const highRisk = Number(dataEl.dataset.accountsHighRisk || 0);
+
+    const ctx = document.getElementById("finPortfolioChart").getContext("2d");
+
+    new Chart(ctx, {
+      type: "bar",
+      data: {
+        labels: [
+          "Active",
+          "Onboarding",
+          "KYC pending",
+          "KYC overdue",
+          "High-risk"
+        ],
+        datasets: [{
+          label: "Count",
+          data: [active, onboarding, kycPending, kycOverdue, highRisk],
+          backgroundColor: [
+            "#16a34a", // active
+            "#0ea5e9", // onboarding
+            "#facc15", // KYC pending
+            "#ef4444", // KYC overdue
+            "#7c3aed"  // high-risk
+          ],
+          borderRadius: 6,
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: { mode: "index", intersect: false }
+        },
+        scales: {
+          x: {
+            grid: { display: false },
+          },
+          y: {
+            beginAtZero: true,
+            ticks: { precision: 0 }
+          }
+        }
+      }
+    });
+  });
+</script>
+
+{% endblock %}

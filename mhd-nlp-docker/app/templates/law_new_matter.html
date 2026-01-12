@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}Open New Matter{% endblock %}
+
+{% block content %}
+<div class="dashboard-container fade-in">
+  <header class="hero">
+    <h2 class="dashboard-title">
+      <img src="/static/img/mhd3.png" class="dashboard-logo" alt="MHD">
+      Open New Matter
+    </h2>
+    <p class="tagline">
+      Create a matter so you can track deadlines and signatures.
+    </p>
+  </header>
+
+  <div class="card form">
+    <form method="post" action="/org/law/matters/new">
+      <div class="form-group">
+        <label for="name">Matter name</label>
+        <input id="name" name="name" type="text" required>
+      </div>
+      <div class="form-group">
+        <label for="client">Client</label>
+        <input id="client" name="client" type="text">
+      </div>
+      <div class="form-group">
+        <label for="owner">Responsible attorney</label>
+        <input id="owner" name="owner" type="text" placeholder="{{ user.username }}">
+      </div>
+      <div class="form-group">
+        <label for="status">Status</label>
+        <select id="status" name="status">
+          <option value="open">Open</option>
+          <option value="pending">Pending</option>
+          <option value="closed">Closed</option>
+        </select>
+      </div>
+      <button type="submit" class="btn primary">Create Matter</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

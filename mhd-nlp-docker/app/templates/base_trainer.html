@@ -1,0 +1,155 @@
+{# app/templates/base_trainer.html #}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>{% block title %}Trainer / Staff{% endblock %} - Modern Health Dashboard</title>
+  <link rel="stylesheet" href="/static/css/style.css" />
+</head>
+<body>
+  <header class="main-header">
+    <div class="logo-container">
+      <img src="/static/img/mhd3.png" alt="MHD" class="logo" />
+      <span>Modern Health Dashboard</span>
+    </div>
+
+    <nav>
+      <a href="/trainer/dashboard">Overview</a>
+      <a href="/training"> Training Room</a>
+      <a href="/equipment"> Equipment</a>
+      <a href="/medical"> Medical Docs</a>
+      <a href="/profile"> Profile</a>
+      <button type="button" class="nav-link-button" onclick="logout()">Logout</button>
+    </nav>
+  </header>
+
+  <main class="content">
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="main-footer">
+    © 2025 Modern Health Dashboard. All rights reserved.
+  </footer>
+
+  <!-- Global scripts (charts, etc.) -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="/static/js/mhd_charts.js"></script>
+
+  <!-- JS logout -->
+  <script>
+    async function logout() {
+      const token = localStorage.getItem("token");
+      try {
+        await fetch("/auth/logout", {
+          method: "POST",
+          headers: token ? { "Authorization": "Bearer " + token } : {}
+        });
+      } catch (e) {
+        console.error("Logout failed", e);
+      }
+      localStorage.removeItem("token");
+      window.location.href = "/";
+    }
+  </script>
+
+  {# ---------- Trainer Ask MHD (single instance) ---------- #}
+  <button
+    id="mhd-assistant-toggle"
+    class="assistant-toggle"
+    type="button">
+    💬 Ask MHD
+  </button>
+
+  <div id="mhd-assistant-panel" class="assistant-panel">
+    <div class="assistant-header">
+      <div class="assistant-title">
+        <span>Ask MHD</span>
+        <span>Ask about athletes, risk, sessions, and equipment.</span>
+      </div>
+      <button
+        id="mhd-assistant-close"
+        class="assistant-close"
+        type="button">
+        ✕
+      </button>
+    </div>
+
+    <div id="mhd-assistant-messages" class="assistant-messages">
+      <div class="assistant-message assistant">
+        <span>
+          I’m your staff assistant. Ask who’s high-risk, who needs clearance,
+          or how recent sessions look.
+        </span>
+      </div>
+    </div>
+
+    <div class="assistant-input">
+      <form id="mhd-assistant-form">
+        <textarea
+          id="mhd-assistant-input"
+          rows="2"
+          placeholder="Ask about high-risk athletes, clearance, or session trends…"></textarea>
+        <button type="submit" class="btn primary">Send</button>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      const toggle = document.getElementById("mhd-assistant-toggle");
+      const panel  = document.getElementById("mhd-assistant-panel");
+      const close  = document.getElementById("mhd-assistant-close");
+      const form   = document.getElementById("mhd-assistant-form");
+      const input  = document.getElementById("mhd-assistant-input");
+      const list   = document.getElementById("mhd-assistant-messages");
+
+      if (!toggle || !panel) return;
+
+      function appendBubble(text, from) {
+        const row  = document.createElement("div");
+        row.className = "assistant-message " + (from === "user" ? "user" : "assistant");
+        const span = document.createElement("span");
+        span.textContent = text;
+        row.appendChild(span);
+        list.appendChild(row);
+        list.scrollTop = list.scrollHeight;
+      }
+
+      toggle.addEventListener("click", () => {
+        panel.classList.toggle("open");
+        if (panel.classList.contains("open") && input) input.focus();
+      });
+
+      close.addEventListener("click", () => {
+        panel.classList.remove("open");
+      });
+
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const text = (input.value || "").trim();
+        if (!text) return;
+
+        appendBubble(text, "user");
+        input.value = "";
+
+        try {
+          const res = await fetch("/assistant/query", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ message: text }),
+          });
+          if (!res.ok) throw new Error("HTTP " + res.status);
+          const data = await res.json();
+          appendBubble(data.answer || "I couldn’t generate a response.", "assistant");
+        } catch (err) {
+          console.error(err);
+          appendBubble(
+            "Sorry — I couldn’t reach the assistant service just now.",
+            "assistant"
+          );
+        }
+      });
+    })();
+  </script>
+</body>
+</html>

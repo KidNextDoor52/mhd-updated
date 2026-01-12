@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}Add New Client{% endblock %}
+
+{% block content %}
+<div class="dashboard-container fade-in">
+  <header class="hero">
+    <h2 class="dashboard-title">
+      <img src="/static/img/mhd3.png" class="dashboard-logo" alt="MHD">
+      Add New Client
+    </h2>
+    <p class="tagline">
+      Basic client intake to kick off onboarding and KYC.
+    </p>
+  </header>
+
+  <div class="card form">
+    <form method="post" action="/org/fin/clients/new">
+      <div class="form-group">
+        <label for="client_name">Client name</label>
+        <input id="client_name" name="client_name" type="text" required>
+      </div>
+      <div class="form-group">
+        <label for="segment">Segment</label>
+        <input id="segment" name="segment" type="text" placeholder="Retail, HNW, SME…">
+      </div>
+      <div class="form-group">
+        <label for="status">Status</label>
+        <select id="status" name="status">
+          <option value="onboarding">Onboarding</option>
+          <option value="active">Active</option>
+        </select>
+      </div>
+      <button type="submit" class="btn primary">Save Client</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

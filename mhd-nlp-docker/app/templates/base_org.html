@@ -1,0 +1,207 @@
+{# app/templates/base_org.html #}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>
+    {% block title %}Org Dashboard{% endblock %} - Modern Health Dashboard
+  </title>
+  <link rel="stylesheet" href="/static/css/style.css" />
+</head>
+<body>
+  <header class="main-header">
+    <div class="logo-container">
+      <img src="/static/img/mhd3.png" alt="MHD" class="logo" />
+      <span>Modern Health Dashboard</span>
+    </div>
+
+    {% set v = (user.vertical or "general") %}
+    <nav>
+      {# Overview is always /dashboard #}
+      <a href="/dashboard">Overview</a>
+
+      {% if v == "oil_gas" %}
+        <a href="#incidents">Incidents</a>
+        <a href="#permits">Permits</a>
+        <a href="#training">Safety Training</a>
+        <a href="#reports">Reports</a>
+
+      {% elif v == "financial" %}
+        <a href="#clients">Clients</a>
+        <a href="#kyc">KYC / AML</a>
+        <a href="#alerts">Alerts</a>
+        <a href="#reports">Reports</a>
+
+      {% elif v == "law" %}
+        <a href="#matters">Matters</a>
+        <a href="#deadlines">Deadlines</a>
+        <a href="#docs">Docs &amp; Signatures</a>
+        <a href="#reports">Reports</a>
+
+      {% else %}
+        <a href="#documents">Documents</a>
+        <a href="#analytics">Analytics</a>
+        <a href="#reports">Reports</a>
+      {% endif %}
+
+      <a href="/profile">Profile</a>
+      <button type="button" class="nav-link-button" onclick="logout()">Logout</button>
+    </nav>
+  </header>
+
+  <main class="content">
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="main-footer">
+    © 2025 Modern Health Dashboard. All rights reserved.
+  </footer>
+
+  <!-- Charts & shared dashboard JS for org views -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="/static/js/mhd_charts.js"></script>
+
+  <script>
+    async function logout() {
+      const token = localStorage.getItem("token");
+      try {
+        await fetch("/auth/logout", {
+          method: "POST",
+          headers: token ? { "Authorization": "Bearer " + token } : {}
+        });
+      } catch (e) {
+        console.error("Logout failed", e);
+      }
+      localStorage.removeItem("token");
+      window.location.href = "/";
+    }
+  </script>
+
+  {# ---------- Ask MHD assistant (ONE copy only) ---------- #}
+  <button
+    id="mhd-assistant-toggle"
+    class="assistant-toggle"
+    type="button">
+    💬 Ask MHD
+  </button>
+
+  <div id="mhd-assistant-panel" class="assistant-panel">
+    <div class="assistant-header">
+      <div class="assistant-title">
+        <span>Ask MHD</span>
+        {% if v == "financial" %}
+          <span>Ask about clients, high-risk accounts, KYC checks, and alerts.</span>
+        {% elif v == "law" %}
+          <span>Ask about matters, deadlines, dockets, and signatures.</span>
+        {% elif v == "oil_gas" %}
+          <span>Ask about incidents, permits, safety training, and risk trends.</span>
+        {% else %}
+          <span>Ask about your org’s data, trends, and what to focus on today.</span>
+        {% endif %}
+      </div>
+      <button
+        id="mhd-assistant-close"
+        class="assistant-close"
+        type="button">
+        ✕
+      </button>
+    </div>
+
+    <div id="mhd-assistant-messages" class="assistant-messages">
+      <div class="assistant-message assistant">
+        <span>
+          {% if v == "financial" %}
+            I’m your compliance co-pilot. Ask about your client portfolio,
+            KYC queue, or high-risk accounts.
+          {% elif v == "law" %}
+            I’m your legal ops co-pilot. Ask about open matters, upcoming
+            deadlines, or docs waiting on signature.
+          {% elif v == "oil_gas" %}
+            I’m your safety &amp; operations co-pilot. Ask about incidents,
+            permits, or training compliance.
+          {% else %}
+            I’m your org assistant. Ask about your dashboards and where
+            attention is needed today.
+          {% endif %}
+        </span>
+      </div>
+    </div>
+
+    <div class="assistant-input">
+      <form id="mhd-assistant-form">
+        <textarea
+          id="mhd-assistant-input"
+          rows="2"
+          {% if v == "financial" %}
+            placeholder="Ask about today’s high-risk accounts, KYC queue, or alerts…"
+          {% elif v == "law" %}
+            placeholder="Ask about matters, deadlines, or docs awaiting signature…"
+          {% elif v == "oil_gas" %}
+            placeholder="Ask about incidents, permits, or safety training status…"
+          {% else %}
+            placeholder="Ask about your org’s data or what to focus on today…"
+          {% endif %}></textarea>
+        <button type="submit" class="btn primary">Send</button>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      const toggle = document.getElementById("mhd-assistant-toggle");
+      const panel  = document.getElementById("mhd-assistant-panel");
+      const close  = document.getElementById("mhd-assistant-close");
+      const form   = document.getElementById("mhd-assistant-form");
+      const input  = document.getElementById("mhd-assistant-input");
+      const list   = document.getElementById("mhd-assistant-messages");
+    
+      if (!toggle || !panel) return;
+    
+      function appendBubble(text, from) {
+        const row  = document.createElement("div");
+        row.className = "assistant-message " + (from === "user" ? "user" : "assistant");
+        const span = document.createElement("span");
+        span.textContent = text;
+        row.appendChild(span);
+        list.appendChild(row);
+        list.scrollTop = list.scrollHeight;
+      }
+    
+      toggle.addEventListener("click", () => {
+        panel.classList.toggle("open");
+        if (panel.classList.contains("open") && input) input.focus();
+      });
+    
+      close.addEventListener("click", () => {
+        panel.classList.remove("open");
+      });
+    
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const text = (input.value || "").trim();
+        if (!text) return;
+      
+        appendBubble(text, "user");
+        input.value = "";
+      
+        try {
+          const res = await fetch("/assistant/query", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ message: text }),
+          });
+          if (!res.ok) throw new Error("HTTP " + res.status);
+          const data = await res.json();
+          appendBubble(data.answer || "I couldn't generate a response.", "assistant");
+        } catch (err) {
+          console.error(err);
+          appendBubble(
+            "Sorry — I couldn’t reach the assistant service just now.",
+            "assistant"
+          );
+        }
+      });
+    })();
+  </script>
+</body>
+</html>
