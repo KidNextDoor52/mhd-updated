@@ -4,22 +4,16 @@ FROM python:3.11-slim AS builder
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
 
-WORKDIR /wheels
+WORKDIR /build
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential \
-    gcc \
-    g++ \
-    python3-dev \
-    pkg-config \
-    curl \
+    build-essential gcc g++ python3-dev pkg-config curl \
  && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .
 RUN pip install --no-cache-dir --upgrade pip wheel setuptools && \
     pip wheel --no-cache-dir --wheel-dir /wheels -r requirements.txt
 
-RUN python -m spacy download en_core_web_sm
 
 # ---------- Runtime ----------
 FROM python:3.11-slim AS runtime
@@ -30,10 +24,6 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-# Install spaCy model (pin exact version)
-RUN pip install --no-cache-dir \
-  https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.7.1/en_core_web_sm-3.7.1-py3-none-any.whl
-
 RUN apt-get update && apt-get install -y --no-install-recommends \
     tesseract-ocr \
     poppler-utils \
@@ -42,13 +32,16 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 RUN useradd -m -u 10001 appuser
 
+COPY requirements.txt /app/requirements.txt
 COPY --from=builder /wheels /wheels
+
 RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir /wheels/* && \
+    pip install --no-cache-dir --no-index --find-links=/wheels -r /app/requirements.txt && \
     rm -rf /wheels
 
-# Better than "spacy download" (see Fix #2 below)
-# RUN python -m spacy download en_core_web_sm
+# Install spaCy model AFTER spaCy is installed
+RUN pip install --no-cache-dir \
+  https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.7.1/en_core_web_sm-3.7.1-py3-none-any.whl
 
 COPY app/ ./app
 USER appuser
