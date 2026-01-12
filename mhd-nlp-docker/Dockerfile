@@ -19,6 +19,8 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir --upgrade pip wheel setuptools && \
     pip wheel --no-cache-dir --wheel-dir /wheels -r requirements.txt
 
+RUN python -m spacy download en_core_web_sm
+
 # ---------- Runtime ----------
 FROM python:3.11-slim AS runtime
 
