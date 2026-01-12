@@ -437,6 +437,7 @@ def _render_financial_dashboard(request: Request, user: dict, org_id: str | None
     )
 
 
+
 # ================= LAW / LEGAL DASHBOARD RENDERER =================
 
 def _render_law_dashboard(request: Request, user: dict, org_id: str | None):
