@@ -1,14 +1,33 @@
 # app/pipelines/steps/deploy.py
 # Simulate "deployment" by writing a manifest. Also supports MLflow Model Registry.
-import json, os
+
+import json
+import os
+from pathlib import Path
+
 import mlflow
 
-REGISTRY_DIR = "/app/.registry"
-os.makedirs(REGISTRY_DIR, exist_ok=True)
-
+# Default to a writable location in Azure Container Apps.
+# You can override via env var REGISTRY_DIR.
+REGISTRY_DIR = os.getenv("REGISTRY_DIR", "/tmp/.registry")
 MODEL_NAME = os.getenv("MODEL_NAME", "mhd_logreg")
 
-def promote_to_registry(run_id: str, stage: str = "Production", archive_existing: bool = True):
+
+def ensure_registry_dir() -> Path:
+    """
+    Ensure the registry directory exists and is writable.
+    Returns the Path for convenience.
+    """
+    p = Path(REGISTRY_DIR)
+    p.mkdir(parents=True, exist_ok=True)
+    return p
+
+
+def promote_to_registry(
+    run_id: str,
+    stage: str = "Production",
+    archive_existing: bool = True,
+):
     """
     Register the run's 'model' artifact and transition it to the given stage.
     """
@@ -19,6 +38,7 @@ def promote_to_registry(run_id: str, stage: str = "Production", archive_existing
     try:
         client.get_registered_model(MODEL_NAME)
     except Exception:
+        # Some backends raise if not found; create is safe.
         client.create_registered_model(MODEL_NAME)
 
     mv = client.create_model_version(name=MODEL_NAME, source=model_uri, run_id=run_id)
@@ -30,7 +50,18 @@ def promote_to_registry(run_id: str, stage: str = "Production", archive_existing
     )
     return {"name": MODEL_NAME, "version": mv.version, "stage": stage}
 
-def promote(run_info: dict):
-    with open(os.path.join(REGISTRY_DIR, "deployed.json"), "w") as f:
-        json.dump(run_info, f)
+
+def promote(run_info: dict) -> bool:
+    """
+    "Deploy" by writing a manifest file to a writable registry dir.
+    """
+    registry_path = ensure_registry_dir()
+    deployed_path = registry_path / "deployed.json"
+
+    # Write atomically to reduce risk of partial writes
+    tmp_path = deployed_path.with_suffix(".json.tmp")
+    with tmp_path.open("w", encoding="utf-8") as f:
+        json.dump(run_info, f, indent=2)
+    tmp_path.replace(deployed_path)
+
     return True
