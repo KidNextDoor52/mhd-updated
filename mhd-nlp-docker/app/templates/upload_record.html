@@ -31,7 +31,7 @@
 <ul>
   {% for file in uploaded_files %}
     <li>
-      {{ file.category }} - {{ file.filename }} ({{ file.upload_date }})
+      {{ (file.category or []) | join(', ') }} - {{ file.filename }} ({{ file.upload_date }})
       <a href="/upload/download/{{ file._id }}" target="_blank">View</a>
     </li>
   {% else %}

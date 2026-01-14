@@ -1,4 +1,8 @@
+# app/storage/backend.py
+from __future__ import annotations
+
 import os
+import io
 from typing import Optional
 
 BACKEND = os.getenv("STORAGE_BACKEND", "azure").lower()
@@ -33,8 +37,6 @@ def storage_startup() -> None:
     global blob_service, ContentSettings, s3
 
     if BACKEND == "azure":
-        # Import here so import-time doesn't crash the app in environments
-        # where azure libs aren't present (or conn str not set yet).
         from azure.storage.blob import BlobServiceClient, ContentSettings as _ContentSettings
 
         if not AZURE_BLOB_CONN_STR:
@@ -46,8 +48,11 @@ def storage_startup() -> None:
     elif BACKEND == "s3":
         from minio import Minio
 
+        # Minio wants host:port (no scheme)
+        endpoint = S3_ENDPOINT.replace("http://", "").replace("https://", "").strip("/")
+
         s3 = Minio(
-            endpoint=S3_ENDPOINT.replace("http://", "").replace("https://", ""),
+            endpoint=endpoint,
             access_key=S3_ACCESS_KEY,
             secret_key=S3_SECRET_KEY,
             secure=S3_ENDPOINT.startswith("https"),
@@ -84,13 +89,17 @@ def _azure_get(container: str, key: str) -> bytes:
 # S3 helpers
 # -------------------------
 def _s3_put(bucket: str, key: str, data: bytes, content_type: Optional[str] = None):
+    """
+    MinIO put_object requires a file-like object with .read()
+    """
     if s3 is None:
         raise RuntimeError("S3 client not initialized (call storage_startup)")
 
+    stream = io.BytesIO(data)
     s3.put_object(
         bucket_name=bucket,
         object_name=key,
-        data=data,
+        data=stream,
         length=len(data),
         content_type=content_type or "application/octet-stream",
     )
@@ -145,19 +154,17 @@ def put_processed(key: str, data: bytes, content_type: Optional[str] = None):
 
 
 def get_bytes_raw(key: str) -> bytes:
-    """
-    Fetch raw bytes from the RAW storage container/bucket.
-    This is what pipeline_ingest imports.
-    """
     if BACKEND == "s3":
         return _s3_get(S3_BUCKET_RAW, key)
     return _azure_get(AZURE_CONTAINER_RAW, key)
 
 
 def get_bytes_processed(key: str) -> bytes:
-    """
-    Fetch bytes from the PROCESSED storage container/bucket.
-    """
     if BACKEND == "s3":
         return _s3_get(S3_BUCKET_PROCESSED, key)
     return _azure_get(AZURE_CONTAINER_PROCESSED, key)
+
+
+# backwards compatibility
+def get_bytes(key: str) -> bytes:
+    return get_bytes_raw(key)
