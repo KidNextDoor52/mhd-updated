@@ -4,7 +4,7 @@ import hashlib
 import pandas as pd
 import mlflow
 
-from app.db.storage import get_bytes_raw
+from app.storage.backend import get_bytes_raw
 from app.pipelines.steps.train import train_basic
 from app.auth import get_current_user
 from app.authz import require_role

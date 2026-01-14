@@ -10,10 +10,17 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
 
-from app.db.storage import ensure_buckets, storage_startup
+from app.storage.backend import ensure_buckets, storage_startup
 from app.db_init import ensure_indexes
 from app.middleware.auth_context import ClaimsMiddleware
 from app.monitoring.middleware import APIMetricsMiddleware
+
+from app.middleware.audit_middleware import AuditMiddleware
+from app.middleware.security_headers import SecurityHeadersMiddleware
+
+from app.utils.audit import ensure_audit_indexes
+
+from app.db import db  # for /readyz ping
 
 from app.routes.pipeline import router as pipeline_router
 from app.routes.predict import router as predict_router
@@ -50,6 +57,8 @@ templates = Jinja2Templates(directory="app/templates")
 
 # Middleware
 app.add_middleware(SessionMiddleware, secret_key=os.getenv("SESSION_SECRET_KEY", os.getenv("SECRET_KEY", "dev")))
+app.add_middleware(SecurityHeadersMiddleware)
+app.add_middleware(AuditMiddleware)  # after security headers; before app routers
 app.add_middleware(APIMetricsMiddleware)
 app.add_middleware(ClaimsMiddleware)
 
@@ -90,6 +99,7 @@ def _startup() -> None:
     storage_startup()
     ensure_buckets()
     ensure_indexes()
+    ensure_audit_indexes()
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -102,9 +112,23 @@ def healthz():
     return {"status": "ok"}
 
 
+@app.get("/readyz")
+def readyz():
+    """
+    Readiness check: dependencies reachable.
+    """
+    try:
+        # Mongo ping (sync client)
+        db.client.admin.command("ping")
+    except Exception as e:
+        return JSONResponse({"ok": False, "mongo": str(e)}, status_code=503)
+
+    # Storage is already initialized at startup; we treat init success as "configured"
+    return {"ok": True, "mongo": "ok", "storage": "configured"}
+
+
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request: Request, exc: HTTPException):
-    # keep your current behavior, but return JSON for non-browser callers
     if request.headers.get("accept", "").lower().find("text/html") >= 0:
         return RedirectResponse(url="/")
     return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})

@@ -5,13 +5,11 @@ from jose import JWTError, jwt
 from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware
 
-from app.settings import Settings  # ✅ import the class, not the instance
+from app.settings import settings
 
 
 class ClaimsMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
-        settings = Settings()  # ✅ build settings at runtime
-
         auth = request.headers.get("authorization") or request.headers.get("Authorization")
         if auth and auth.lower().startswith("bearer "):
             token = auth.split(" ", 1)[1].strip()

@@ -70,11 +70,9 @@ class Settings:
     JWT_ALG: str = os.getenv("JWT_ALG", "HS256")
 
     def __post_init__(self) -> None:
-        # Parse CORS origins
         cors = [o.strip() for o in os.getenv("CORS_ALLOWED_ORIGINS", "").split(",") if o.strip()]
         object.__setattr__(self, "CORS_ALLOWED_ORIGINS", cors)
 
-        # JWT secret defaults to SECRET_KEY for backward compatibility
         jwt_secret = os.getenv("JWT_SECRET", self.SECRET_KEY)
         object.__setattr__(self, "JWT_SECRET", jwt_secret)
 

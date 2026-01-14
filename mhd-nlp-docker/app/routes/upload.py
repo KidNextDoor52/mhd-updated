@@ -1,3 +1,6 @@
+# app/routes/upload.py
+from __future__ import annotations
+
 from fastapi import APIRouter, Request, UploadFile, File, Depends, Form, Query, HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse, FileResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
@@ -18,9 +21,9 @@ from app.auth import get_current_user, get_current_user_optional
 from app.utils.logger import log_activity
 from app.utils.ocr import extract_text_from_pdf_or_ocr, ocr_image_path
 from app.services.sync import rebuild_clinical_snapshot, run_risk_rules
-from app.utils.snapshot import rebuild_snapshot  # (kept if used elsewhere)
+from app.utils.snapshot import rebuild_snapshot  # kept if used elsewhere
 
-from app.db.storage import put_raw, get_bytes_raw
+from app.storage.files import save_upload, load_upload
 
 
 router = APIRouter(prefix="/upload", tags=["upload"])
@@ -119,9 +122,6 @@ def _ext(filename: str) -> str:
     return os.path.splitext(filename)[1].lower()
 
 def _safe_filename(name: str) -> str:
-    """
-    Remove path tricks and keep it simple for storage keys.
-    """
     base = os.path.basename(name or "upload")
     base = re.sub(r"[^A-Za-z0-9._-]+", "_", base)
     return base[:180] if len(base) > 180 else base
@@ -158,15 +158,18 @@ def validate_shared_download(file_meta: dict, token: Optional[str], email: Optio
     if email.lower() != link["recipient_email"]:
         raise HTTPException(status_code=403, detail="Email not authorized for this link")
 
+    # Owner must match
     if link["owner"] != file_meta["username"]:
         raise HTTPException(status_code=403, detail="Not authorized for this owner")
 
+    # Single-file scope
     allowed_files = link.get("allowed_file_ids") or []
     if allowed_files:
         if str(file_meta["_id"]) not in allowed_files:
             raise HTTPException(status_code=403, detail="File not allowed by this link")
         return
 
+    # Category scope
     allowed_categories = link.get("allowed_categories") or []
     if allowed_categories:
         file_cats = (file_meta.get("category") or [])
@@ -186,6 +189,7 @@ def _read_csv_bytes(file_bytes: bytes, encoding_try=("utf-8-sig", "utf-8", "lati
     if text is None:
         raise ValueError(f"Could not decode CSV: {last_err}")
 
+    # Try to sniff delimiter; fallback to comma
     try:
         sample = text[:4096]
         sniffer = csv.Sniffer()
@@ -214,6 +218,7 @@ def _read_csv_bytes(file_bytes: bytes, encoding_try=("utf-8-sig", "utf-8", "lati
 
 
 def csv_header_warnings(rows: list[dict], categories: set[str]) -> List[str]:
+    """Soft header checks → return warnings (do not block upload)."""
     warns: List[str] = []
     if not rows:
         warns.append("CSV has no rows.")
@@ -265,9 +270,9 @@ def ingest_medical_csv(username: str, rows: list[dict]) -> dict:
         return {"updated_fields": []}
 
     headers = [h for h in rows[0].keys()]
-    is_kv = len(headers) == 2 and _key(headers[0]) in {"field","key","name"} and _key(headers[1]) in {"value","val"}
+    is_kv = len(headers) == 2 and _key(headers[0]) in {"field", "key", "name"} and _key(headers[1]) in {"value", "val"}
 
-    kv_map: dict[str,str] = {}
+    kv_map: dict[str, str] = {}
     if is_kv:
         for r in rows:
             k = _key(r.get(headers[0]))
@@ -348,9 +353,9 @@ def ingest_medical_csv(username: str, rows: list[dict]) -> dict:
     cleared = _clean_text(grab("cleared"))
     if cleared:
         v = cleared.lower()
-        if v in {"yes","y","true","t","1"}:
+        if v in {"yes", "y", "true", "t", "1"}:
             final_doc["cleared"] = True
-        elif v in {"no","n","false","f","0"}:
+        elif v in {"no", "n", "false", "f", "0"}:
             final_doc["cleared"] = False
 
     to_set = {k: v for k, v in final_doc.items() if v is not None}
@@ -385,14 +390,14 @@ def ingest_performance_csv(username: str, rows: list[dict]) -> dict:
     updated = {}
 
     metric_aliases = {
-        "bench":        ["bench", "bench_press", "bench_lb", "bench_lbs"],
-        "squat":        ["squat", "back_squat", "squat_lb", "squat_lbs"],
-        "deadlift":     ["deadlift", "dead_lift", "deadlift_lb", "deadlift_lbs"],
-        "power_clean":  ["power_clean", "clean", "pc", "powerclean"],
-        "vertical":     ["vertical", "vertical_jump", "vert", "vertical_in", "vertical_inches"],
-        "forty_dash":   ["forty", "forty_time", "40yd", "40_yard", "40", "40_time", "40-yard", "40-yard_dash"],
-        "shuttle":      ["shuttle", "pro_agility", "shuttle_time", "5-10-5"],
-        "broad_jump":   ["broad_jump", "standing_broad", "broad", "broad_inches"],
+        "bench": ["bench", "bench_press", "bench_lb", "bench_lbs"],
+        "squat": ["squat", "back_squat", "squat_lb", "squat_lbs"],
+        "deadlift": ["deadlift", "dead_lift", "deadlift_lb", "deadlift_lbs"],
+        "power_clean": ["power_clean", "clean", "pc", "powerclean"],
+        "vertical": ["vertical", "vertical_jump", "vert", "vertical_in", "vertical_inches"],
+        "forty_dash": ["forty", "forty_time", "40yd", "40_yard", "40", "40_time", "40-yard", "40-yard_dash"],
+        "shuttle": ["shuttle", "pro_agility", "shuttle_time", "5-10-5"],
+        "broad_jump": ["broad_jump", "standing_broad", "broad", "broad_inches"],
     }
 
     def find_metric(row: dict, metric: str, aliases: list[str]) -> Optional[float]:
@@ -524,43 +529,41 @@ async def upload_record(
         log_activity(username, "upload_validation_failed", {"filename": filename, "errors": errs})
         return RedirectResponse(f"/upload?err={quote_plus(errs[0])}", status_code=303)
 
-    # Create the upload DB record first to get a stable id for storage key
+    # Create DB record first to get stable id for storage key
+    content_type = file.content_type or _guess_content_type(filename)
     inserted = uploads_collection.insert_one({
         "username": username,
         "filename": filename,
         "category": list(cat_set),
         "upload_date": _utcnow(),
         "storage_backend": os.getenv("STORAGE_BACKEND", "azure").lower(),
+        "content_type": content_type,
     })
     file_id = inserted.inserted_id
 
-    # Storage key: stable + unique
+    # Stable + unique key
     storage_key = f"{username}/uploads/{str(file_id)}/{filename}"
 
-    # Save local (optional, helpful for OCR libs expecting a path)
+    # Local cache (optional): OCR utils expect a filesystem path
     local_path = os.path.join(UPLOAD_FOLDER, f"{str(file_id)}__{filename}")
     try:
         with open(local_path, "wb") as buffer:
             buffer.write(content)
     except Exception as e:
-        # local cache failing is non-fatal if storage succeeds
         log_activity(username, "upload_local_write_failed", {"filename": filename, "err": str(e)})
 
-    # Persist to backend storage (this is the REAL source of truth)
+    # Persist to backend storage (source of truth)
     try:
-        put_raw(storage_key, content, content_type=_guess_content_type(filename))
-        uploads_collection.update_one(
-            {"_id": file_id},
-            {"$set": {"storage_key": storage_key}}
-        )
+        save_upload(storage_key, content, content_type=content_type)
+        uploads_collection.update_one({"_id": file_id}, {"$set": {"storage_key": storage_key}})
     except Exception as e:
-        # If storage fails, roll back the DB insert to avoid dangling records
         uploads_collection.delete_one({"_id": file_id})
         log_activity(username, "upload_storage_failed", {"filename": filename, "err": str(e)})
         return RedirectResponse(f"/upload?err={quote_plus('Storage error: ' + str(e))}", status_code=303)
 
     upload_flags.update_one({"username": username}, {"$set": {"first_time": False}}, upsert=True)
 
+    # -------------- ingestion --------------
     msg = "File uploaded."
     try:
         if ext == ".csv":
@@ -617,7 +620,6 @@ async def upload_record(
             msg = "Data ingested from text." if ingested_any else "Uploaded; no structured data detected."
 
         elif ext == ".pdf":
-            # Prefer local path for PDF OCR utils
             text = extract_text_from_pdf_or_ocr(local_path)
             extracted = extract_structured_from_text(text, cat_set)
             ingested_any = False
@@ -692,6 +694,7 @@ async def upload_record(
         log_activity(username, "ingest_error", {"filename": filename, "error": str(e)})
         return RedirectResponse(f"/upload?err={quote_plus('Could not ingest: ' + str(e))}", status_code=303)
 
+    # Post-ingest housekeeping
     try:
         db.events.insert_one({
             "user": username,
@@ -726,11 +729,11 @@ async def download_file(
     if not file_meta:
         return JSONResponse({"error": "File not found"}, status_code=404)
 
-    # Owner direct
+    # Owner can download directly
     if current_user and current_user.get("username") == file_meta["username"]:
         return await _serve_file(file_meta)
 
-    # Shared access
+    # Otherwise require share token+email
     try:
         validate_shared_download(file_meta, token, email)
     except HTTPException as e:
@@ -740,29 +743,27 @@ async def download_file(
 
 
 async def _serve_file(file_meta: dict):
-    """
-    Serve from local cache if present, otherwise stream from storage backend.
-    """
     filename = file_meta["filename"]
     file_id = str(file_meta["_id"])
-    local_path = os.path.join(UPLOAD_FOLDER, f"{file_id}__{filename}")
 
+    # local cache path (optional)
+    local_path = os.path.join(UPLOAD_FOLDER, f"{file_id}__{filename}")
     if os.path.exists(local_path):
         return FileResponse(local_path, filename=filename)
 
     storage_key = file_meta.get("storage_key")
     if not storage_key:
-        # Backward-compat fallback: try the old local-only filename
+        # Backward-compat fallback: try old local-only filename
         fallback = os.path.join(UPLOAD_FOLDER, filename)
         if os.path.exists(fallback):
             return FileResponse(fallback, filename=filename)
         return JSONResponse({"error": "File missing (no storage_key and no local file)."}, status_code=404)
 
     try:
-        data = get_bytes_raw(storage_key)
+        data = load_upload(storage_key)
     except Exception as e:
         return JSONResponse({"error": f"Could not fetch from storage: {str(e)}"}, status_code=500)
 
-    content_type = _guess_content_type(filename)
+    content_type = file_meta.get("content_type") or _guess_content_type(filename)
     headers = {"Content-Disposition": f'attachment; filename="{filename}"'}
     return StreamingResponse(io.BytesIO(data), media_type=content_type, headers=headers)

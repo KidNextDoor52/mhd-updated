@@ -1,5 +1,5 @@
 ﻿import sys
-import app.db.storage as s
+import app.storage.backend as s
 from pathlib import Path
 
 print("PY", sys.version)

@@ -135,3 +135,4 @@ This threat model confirms:
 - Residual risk is documented
 
 The platform is suitable for regulated environments with clear upgrade paths.
+

@@ -1,3 +1,6 @@
+# app/storage/backend.py
+from __future__ import annotations
+
 import os
 import io
 from typing import Optional
@@ -131,6 +134,7 @@ def ensure_buckets():
             try:
                 blob_service.create_container(c)
             except Exception:
+                # container already exists
                 pass
 
 
